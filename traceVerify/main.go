@@ -88,9 +88,9 @@ func (o Item) String() string {
 	}
 
 	if o.partner != "" {
-		return fmt.Sprintf("%v,[%v],%v,%v", o.thread, ops, o.partner, o.vc)
+		return fmt.Sprintf("%v,[%v],%v", o.thread, ops, o.partner)
 	}
-	return fmt.Sprintf("%v,[%v],%v", o.thread, ops, o.vc)
+	return fmt.Sprintf("%v,[%v]", o.thread, ops)
 }
 func (o Item) ShortString() string {
 	var ops string
