@@ -1,0 +1,6 @@
+foo00,[(1,0,!,C:\Users\stka0001\papersandstuff\verifcation_of_regular_program_trace_properties\traceOrder\testSuite\close.go:4)],P,-
+foo00,[(1,0,!,C:\Users\stka0001\papersandstuff\verifcation_of_regular_program_trace_properties\traceOrder\testSuite\close.go:4)],C,-
+main,[(1,0,?,C:\Users\stka0001\papersandstuff\verifcation_of_regular_program_trace_properties\traceOrder\testSuite\close.go:7)],P,-
+main,[(1,0,?,C:\Users\stka0001\papersandstuff\verifcation_of_regular_program_trace_properties\traceOrder\testSuite\close.go:7)],C,foo00
+baz11,[(1,0,#,C:\Users\stka0001\papersandstuff\verifcation_of_regular_program_trace_properties\traceOrder\testSuite\close.go:10)],P,-
+baz11,[(1,0,#,C:\Users\stka0001\papersandstuff\verifcation_of_regular_program_trace_properties\traceOrder\testSuite\close.go:10)],C,-

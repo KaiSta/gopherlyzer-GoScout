@@ -1,0 +1,8 @@
+main,[(1,!,tests\racetest.go:54)],P,-
+main,[(1,!,tests\racetest.go:54)],C,-
+main,[(1,?,tests\racetest.go:69)],P,-
+main,[(1,?,tests\racetest.go:69)],C,main
+foo0,[(1,!,tests\racetest.go:54)],P,-
+foo0,[(1,!,tests\racetest.go:54)],C,-
+foo0,[(1,?,tests\racetest.go:69)],P,-
+foo0,[(1,?,tests\racetest.go:69)],C,foo0
