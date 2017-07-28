@@ -1,6 +1,6 @@
 # gopherlyzer-GoScout
 
-Prototype implementation for our analysis described in 'Trace-Based Run-time Analysis Method of Message-Passing Go Programs'. 
+Prototype implementation for our analysis described in 'Trace-Based Run-time Analysis of Message-Passing Go Programs'. 
 It still contains bugs and covers only a subset of the Go language. See our examples for what it is able to do at the moment.
 
 ## Description
