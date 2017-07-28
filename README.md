@@ -1,6 +1,7 @@
 # gopherlyzer-GoScout
 
 Prototype implementation for our analysis described in [Trace-Based Run-time Analysis of Message-Passing Go Programs](https://www.home.hs-karlsruhe.de/~suma0002/publications/go-trace-based-run-time-analysis.pdf). 
+
 We support all of Go's message-passing features (details for our
 treatment of buffered channels, select with default/timeout and
 closing channels can be found in the appendix).
