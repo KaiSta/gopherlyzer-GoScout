@@ -340,9 +340,28 @@ func (p *ASTParser) handleForStmt(f *ast.ForStmt) *ast.ForStmt {
 	f.Body = p.handleBlockStmt(f.Body)
 	return f
 }
-func (p *ASTParser) handleRangeStmt(f *ast.RangeStmt) *ast.RangeStmt {
+func (p *ASTParser) handleRangeStmt(f *ast.RangeStmt) ast.Stmt {
 	f.Body = p.handleBlockStmt(f.Body)
-	return f
+
+	t := p.getType(f.X)
+	if _, ok := t.(*ast.ChanType); !ok {
+		return f
+	}
+
+	rcv := &ast.UnaryExpr{Op: token.ARROW, X: f.X, OpPos: f.Pos()}
+	tmp := &ast.BlockStmt{}
+	p.handleRcvStmt(rcv, tmp)
+	if ass, ok := tmp.List[1].(*ast.AssignStmt); ok {
+		ass.Lhs = append(ass.Lhs, ast.NewIdent("err"))
+		tmp.List[1] = ass
+	}
+	equals := &ast.BinaryExpr{X: ast.NewIdent("err"), Y: ast.NewIdent("nil"), Op: token.NEQ}
+	ifstmt := &ast.IfStmt{Cond: equals, Body: &ast.BlockStmt{List: []ast.Stmt{&ast.ExprStmt{X: ast.NewIdent("break")}}}}
+	assign := &ast.AssignStmt{Tok: token.DEFINE, Lhs: []ast.Expr{f.Key}}
+	assign.Rhs = append(assign.Rhs, &ast.SelectorExpr{X: ast.NewIdent(fmt.Sprintf("tmp%v", p.nameID)), Sel: ast.NewIdent("value")})
+	block := &ast.BlockStmt{List: append([]ast.Stmt{tmp.List[0], tmp.List[1], tmp.List[2], ifstmt, assign}, f.Body.List...)}
+	forstmt := &ast.ForStmt{Body: block}
+	return forstmt
 }
 
 func (p *ASTParser) handleBlockStmt(in *ast.BlockStmt) *ast.BlockStmt {
