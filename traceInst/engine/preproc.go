@@ -366,6 +366,7 @@ func (p *ASTParser) handleBlockStmt(in *ast.BlockStmt) *ast.BlockStmt {
 			}
 		case *ast.AssignStmt: //receive with assign, or channel creation
 			//	out.List = append(out.List, p.handleAssign(x, out))
+			fmt.Println("ASSIGN", p.FSet.Position(x.Pos()).Line)
 			p.handleAssign(x, out)
 		case *ast.SendStmt:
 			p.handleSendStmt(x, out)
@@ -417,6 +418,17 @@ func (p *ASTParser) handleBlockStmt(in *ast.BlockStmt) *ast.BlockStmt {
 			fl := &ast.FuncLit{Body: body, Type: ft}
 			x.Call = &ast.CallExpr{Fun: fl, Args: x.Call.Args}
 			out.List = append(out.List, x)
+		case *ast.DeclStmt:
+			switch y := x.Decl.(type) {
+			case *ast.GenDecl:
+				if z, ok := y.Specs[0].(*ast.ValueSpec); ok {
+					//tmp := &ast.BlockStmt{}
+					p.handleAssign(&ast.AssignStmt{Lhs: []ast.Expr{z.Names[0]}, Rhs: []ast.Expr{z.Values[0]}, Tok: token.DEFINE}, out)
+					// for _, e := range tmp.List {
+					// 	fmt.Println(e, reflect.TypeOf(e))
+					// }
+				}
+			}
 		default:
 			out.List = append(out.List, x)
 		}
