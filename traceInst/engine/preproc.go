@@ -120,8 +120,9 @@ func (p *ASTParser) handleAssign(assign *ast.AssignStmt, nBlockStmt *ast.BlockSt
 		if y.Op == token.ARROW {
 			p.handleRcvStmt(y, nBlockStmt)
 			assign.Rhs[0] = &ast.SelectorExpr{X: ast.NewIdent(fmt.Sprintf("tmp%v", p.nameID)), Sel: ast.NewIdent("value")}
-
 		}
+	case *ast.BinaryExpr:
+		p.handleBinaryExpr(y, nBlockStmt)
 	}
 
 	if raceDetector && !isMake && assign.Tok != token.DEFINE {
@@ -151,6 +152,33 @@ func (p *ASTParser) handleAssign(assign *ast.AssignStmt, nBlockStmt *ast.BlockSt
 		call := &ast.CallExpr{Fun: sel, Args: []ast.Expr{assign.Lhs[0], capCall}}
 		nBlockStmt.List = append(nBlockStmt.List, &ast.ExprStmt{X: call})
 	}
+}
+
+func (p *ASTParser) handleBinaryExpr(x *ast.BinaryExpr, nBlockStmt *ast.BlockStmt) {
+	switch v := x.X.(type) {
+	case *ast.UnaryExpr:
+		if v.Op == token.ARROW {
+			b := &ast.BlockStmt{}
+			p.handleRcvStmt(v, b)
+			nBlockStmt.List = append(nBlockStmt.List, b.List...)
+			x.X = &ast.SelectorExpr{X: ast.NewIdent(fmt.Sprintf("tmp%v", p.nameID)), Sel: ast.NewIdent("value")}
+		}
+	case *ast.BinaryExpr:
+		p.handleBinaryExpr(v, nBlockStmt)
+	}
+
+	switch v := x.Y.(type) {
+	case *ast.UnaryExpr:
+		if v.Op == token.ARROW {
+			b := &ast.BlockStmt{}
+			p.handleRcvStmt(v, b)
+			nBlockStmt.List = append(nBlockStmt.List, b.List...)
+			x.Y = &ast.SelectorExpr{X: ast.NewIdent(fmt.Sprintf("tmp%v", p.nameID)), Sel: ast.NewIdent("value")}
+		}
+	case *ast.BinaryExpr:
+		p.handleBinaryExpr(v, nBlockStmt)
+	}
+	//nBlockStmt.List = append(nBlockStmt.List, &ast.ExprStmt{X: x})
 }
 
 func (p *ASTParser) race_handleBinaryExpr(x *ast.BinaryExpr, nBlockStmt *ast.BlockStmt) {
@@ -385,7 +413,6 @@ func (p *ASTParser) handleBlockStmt(in *ast.BlockStmt) *ast.BlockStmt {
 			}
 		case *ast.AssignStmt: //receive with assign, or channel creation
 			//	out.List = append(out.List, p.handleAssign(x, out))
-			fmt.Println("ASSIGN", p.FSet.Position(x.Pos()).Line)
 			p.handleAssign(x, out)
 		case *ast.SendStmt:
 			p.handleSendStmt(x, out)
