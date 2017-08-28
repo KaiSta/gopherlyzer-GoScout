@@ -56,7 +56,7 @@ func (p *ASTParser) Run() {
 		panic(err)
 	}
 	fmt.Println("---")
-	fmt.Println(buf.String())
+	//	fmt.Println(buf.String())
 	fmt.Println("---")
 	file, err := os.Create(p.outPath)
 	if err != nil {
@@ -407,6 +407,7 @@ func (p *ASTParser) handleBlockStmt(in *ast.BlockStmt) *ast.BlockStmt {
 					p.race_handleCallExpr(y, out)
 				}
 				p.handleClose(y, out)
+				p.handleRegCalls(y, out)
 			//	out.List = append(out.List, x)
 			default:
 				out.List = append(out.List, x)
@@ -482,6 +483,32 @@ func (p *ASTParser) handleBlockStmt(in *ast.BlockStmt) *ast.BlockStmt {
 	return out
 }
 
+func (p *ASTParser) handleRegCalls(c *ast.CallExpr, nBlockStmt *ast.BlockStmt) {
+	for i, arg := range c.Args {
+		if p.isRcv(arg) {
+			nBlock := &ast.BlockStmt{}
+			p.handleRcvStmt(arg.(*ast.UnaryExpr), nBlock)
+			fmt.Println(len(nBlock.List))
+			nBlockStmt.List = append(nBlockStmt.List, nBlock.List...)
+			c.Args[i] = nBlock.List[1].(*ast.AssignStmt).Lhs[0]
+		}
+	}
+	nBlockStmt.List = append(nBlockStmt.List, &ast.ExprStmt{X: c})
+	//fmt.Println(c.Fun, reflect.TypeOf(c.Fun))
+}
+
+func (p *ASTParser) isSend(n ast.Node) bool {
+	_, ok := n.(*ast.SendStmt)
+	return ok
+}
+func (p *ASTParser) isRcv(n ast.Node) bool {
+	fmt.Println(n, reflect.TypeOf(n))
+	if un, ok := n.(*ast.UnaryExpr); ok {
+		return un.Op == token.ARROW
+	}
+	return false
+}
+
 func (p *ASTParser) handleClose(c *ast.CallExpr, nBlockStmt *ast.BlockStmt) {
 	if id, ok := c.Fun.(*ast.Ident); ok && id.Name == "close" {
 		sel := &ast.SelectorExpr{X: ast.NewIdent("tracer"), Sel: ast.NewIdent("ClosePrep")}
@@ -502,7 +529,7 @@ func (p *ASTParser) handleClose(c *ast.CallExpr, nBlockStmt *ast.BlockStmt) {
 		nBlockStmt.List = append(nBlockStmt.List, &ast.ExprStmt{X: com})
 		return
 	}
-	nBlockStmt.List = append(nBlockStmt.List, &ast.ExprStmt{X: c})
+	//nBlockStmt.List = append(nBlockStmt.List, &ast.ExprStmt{X: c})
 }
 
 func (p *ASTParser) handleSelect(s *ast.SelectStmt, nBlockStmt *ast.BlockStmt) {
