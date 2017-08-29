@@ -1,6 +1,6 @@
 # gopherlyzer-GoScout
 
-Prototype implementation for our analysis described in [Trace-Based Run-time Analysis of Message-Passing Go Programs](https://www.home.hs-karlsruhe.de/~suma0002/publications/go-trace-based-run-time-analysis.pdf). 
+Prototype implementation for our analysis described in [Trace-Based Run-time Analysis of Message-Passing Go Programs](https://www.home.hs-karlsruhe.de/~suma0002/publications/go-trace-based-run-time-analysis.pdf).
 
 We support all of Go's message-passing features (details for our
 treatment of buffered channels, select with default/timeout and
@@ -8,7 +8,6 @@ closing channels can be found in the appendix).
 Our current prototype only supports the instrumentation of programs
 consisting of a single file and reports the
 set of alternative communications on the command line.
-
 
 ## Description
 
@@ -35,15 +34,16 @@ cd traceInst
 
 go run main -in ../Tests/newsReader.go -out ../Tests/newsReaderInst.go
 
-Open newsReaderInst.go and add 
+Open newsReaderInst.go and add
 
-import "../traceInst/tracer" 
+import "../traceInst/tracer"
 
 after the package declaration.
 
 Add tracer.Start() at the beginning of the main function and tracer.Stop at the end.
 
 ### Run
+
 Running the instrumented code with
 
 go run newsReaderInst.go

@@ -46,7 +46,6 @@ func (p *ASTParser) Run() {
 	for _, d := range p.File.Decls {
 		switch x := d.(type) {
 		case *ast.FuncDecl:
-			fmt.Println(x.Name)
 			p.handleFuncDecl(x)
 		}
 	}
@@ -56,7 +55,7 @@ func (p *ASTParser) Run() {
 		panic(err)
 	}
 	fmt.Println("---")
-	//	fmt.Println(buf.String())
+	fmt.Println(buf.String())
 	fmt.Println("---")
 	file, err := os.Create(p.outPath)
 	if err != nil {
@@ -123,6 +122,10 @@ func (p *ASTParser) handleAssign(assign *ast.AssignStmt, nBlockStmt *ast.BlockSt
 		}
 	case *ast.BinaryExpr:
 		p.handleBinaryExpr(y, nBlockStmt)
+	case *ast.ParenExpr:
+		if p.handleParenExpr(y, nBlockStmt) {
+			assign.Rhs[0] = &ast.SelectorExpr{X: ast.NewIdent(fmt.Sprintf("tmp%v", p.nameID)), Sel: ast.NewIdent("value")}
+		}
 	}
 
 	if raceDetector && !isMake && assign.Tok != token.DEFINE {
@@ -154,6 +157,22 @@ func (p *ASTParser) handleAssign(assign *ast.AssignStmt, nBlockStmt *ast.BlockSt
 	}
 }
 
+func (p *ASTParser) handleParenExpr(x *ast.ParenExpr, nBlockStmt *ast.BlockStmt) bool {
+	if p.isRcv(x.X) {
+		nBlock := &ast.BlockStmt{}
+		p.handleRcvStmt(x.X.(*ast.UnaryExpr), nBlock)
+		nBlockStmt.List = append(nBlockStmt.List, nBlock.List...)
+		x.X = &ast.SelectorExpr{X: ast.NewIdent(fmt.Sprintf("tmp%v", p.nameID)), Sel: ast.NewIdent("value")}
+		return true
+	}
+	if v, ok := x.X.(*ast.BinaryExpr); ok {
+		p.handleBinaryExpr(v, nBlockStmt)
+		x.X = v
+		return true
+	}
+	return false
+}
+
 func (p *ASTParser) handleBinaryExpr(x *ast.BinaryExpr, nBlockStmt *ast.BlockStmt) {
 	switch v := x.X.(type) {
 	case *ast.UnaryExpr:
@@ -165,6 +184,12 @@ func (p *ASTParser) handleBinaryExpr(x *ast.BinaryExpr, nBlockStmt *ast.BlockStm
 		}
 	case *ast.BinaryExpr:
 		p.handleBinaryExpr(v, nBlockStmt)
+	case *ast.ParenExpr:
+		nBlock := &ast.BlockStmt{}
+		if p.handleParenExpr(v, nBlock) {
+			nBlockStmt.List = append(nBlockStmt.List, nBlock.List...)
+			//x.X = &ast.SelectorExpr{X: ast.NewIdent(fmt.Sprintf("tmp%v", p.nameID)), Sel: ast.NewIdent("value")}
+		}
 	}
 
 	switch v := x.Y.(type) {
@@ -177,6 +202,12 @@ func (p *ASTParser) handleBinaryExpr(x *ast.BinaryExpr, nBlockStmt *ast.BlockStm
 		}
 	case *ast.BinaryExpr:
 		p.handleBinaryExpr(v, nBlockStmt)
+	case *ast.ParenExpr:
+		nBlock := &ast.BlockStmt{}
+		if p.handleParenExpr(v, nBlock) {
+			nBlockStmt.List = append(nBlockStmt.List, nBlock.List...)
+			//	x.Y = &ast.SelectorExpr{X: ast.NewIdent(fmt.Sprintf("tmp%v", p.nameID)), Sel: ast.NewIdent("value")}
+		}
 	}
 	//nBlockStmt.List = append(nBlockStmt.List, &ast.ExprStmt{X: x})
 }
@@ -488,7 +519,7 @@ func (p *ASTParser) handleRegCalls(c *ast.CallExpr, nBlockStmt *ast.BlockStmt) {
 		if p.isRcv(arg) {
 			nBlock := &ast.BlockStmt{}
 			p.handleRcvStmt(arg.(*ast.UnaryExpr), nBlock)
-			fmt.Println(len(nBlock.List))
+
 			nBlockStmt.List = append(nBlockStmt.List, nBlock.List...)
 			c.Args[i] = nBlock.List[1].(*ast.AssignStmt).Lhs[0]
 		}
@@ -502,7 +533,7 @@ func (p *ASTParser) isSend(n ast.Node) bool {
 	return ok
 }
 func (p *ASTParser) isRcv(n ast.Node) bool {
-	fmt.Println(n, reflect.TypeOf(n))
+
 	if un, ok := n.(*ast.UnaryExpr); ok {
 		return un.Op == token.ARROW
 	}
