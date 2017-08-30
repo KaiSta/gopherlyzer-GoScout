@@ -54,7 +54,7 @@ will produce a trace.log file in the same folder.
 
 cd traceVerify
 
-go run main.go -trace ..\Tests\trace.log
+go run main.go -plain -trace ..\Tests\trace.log
 
 The result could look like the following:
 
