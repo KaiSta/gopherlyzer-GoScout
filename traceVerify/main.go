@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -712,7 +713,7 @@ func getAsyncChans(items []Item) map[string][]Item {
 	return chans
 }
 
-func addVCs(m *machine) {
+func addVCs(m *machine, jsonFlag, plain bool) {
 	var items []Item
 	chosenPartner := make(map[string]Item)
 	for {
@@ -812,7 +813,7 @@ func addVCs(m *machine) {
 				//prepare
 				t1.vc.Add(t1.ID, 1)
 				t1.events[0].vc = t1.vc.clone()
-				fmt.Println(t1.ID, t1.events[0], t2.ID, t2.vc)
+				//fmt.Println(t1.ID, t1.events[0], t2.ID, t2.vc)
 				t2.vc.Add(t2.ID, 1)
 				t2.events[0].vc = t2.vc.clone()
 
@@ -838,7 +839,6 @@ func addVCs(m *machine) {
 				m.threads[t1.ID] = t1
 				m.threads[t2.ID] = t2
 			} else {
-				fmt.Println(5)
 				t1.vc.Add(t1.ID, 1)
 				t1.events[0].vc = t1.vc.clone()
 				items = append(items, t1.events[0])
@@ -865,9 +865,10 @@ func addVCs(m *machine) {
 	// 	fmt.Println(it)
 	// }
 	// fmt.Printf("\n\n")
-
+	res := Result{}
 	noAlts := true
 	for _, it := range items {
+		alt := Alternative{Op: "", Unused: make([]string, 0), Used: make([]string, 0)}
 		alternatives := make(map[string]struct{}) // []Item
 		for _, op := range it.ops {
 			opKind := OpKind(0)
@@ -897,27 +898,45 @@ func addVCs(m *machine) {
 		}
 		if len(alternatives) > 0 {
 			noAlts = false
-			fmt.Println("Alternatives for", it)
+
+			if plain {
+				fmt.Println("Alternatives for", it)
+			}
 			// for _, x := range alternatives {
 			// 	color.HiRed(fmt.Sprintf("\t%v", x))
 			// }
 			vv, ok := chosenPartner[it.ShortString()]
+			alt.Op = it.ShortString()
 			for k := range alternatives {
 				if ok && vv.ShortString() == k {
 					continue
 				}
-				color.HiRed(fmt.Sprintf("\t%v", k))
+				if plain {
+					color.HiRed(fmt.Sprintf("\t%v", k))
+				} else if jsonFlag {
+					alt.Unused = append(alt.Used, k)
+				}
 			}
 
 			if ok {
-				color.HiGreen(fmt.Sprintf("\t%v", vv.ShortString()))
+				if plain {
+					color.HiGreen(fmt.Sprintf("\t%v", vv.ShortString()))
+				} else if jsonFlag {
+					alt.Used = append(alt.Used, vv.ShortString())
+				}
 			}
+		}
 
+		if jsonFlag && alt.Op != "" {
+			res.Alts = append(res.Alts, alt)
 		}
 	}
 	if noAlts {
-		fmt.Println("No alternatives found!")
+		if plain {
+			fmt.Println("No alternatives found!")
+		}
 	}
+
 	// for _, it := range items {
 	// 	fmt.Println(">>>", it)
 	// }
@@ -929,7 +948,10 @@ func addVCs(m *machine) {
 	//check for close operations and what operations happend parallel on the same channel
 	//this way we can find another kind of alternative schedules! in which for example a receive or even a send happened
 	//shortly before the close but also could have happend afterwards!
-	fmt.Printf("\n\n")
+	if plain {
+		fmt.Printf("\n\n")
+	}
+
 	for _, it := range items {
 		for _, op := range it.ops {
 			if op.kind != COMMIT|CLS {
@@ -956,27 +978,67 @@ func addVCs(m *machine) {
 				}
 			}
 
-			fmt.Println("Actions parallel or after", it)
+			if plain {
+				fmt.Println("Actions parallel or after", it)
+			}
+			alt := Alternative{Op: it.ShortString(), Used: make([]string, 0), Unused: make([]string, 0)}
 			for k, v := range altNAfter {
 				if v > 0 {
-					color.HiRed(fmt.Sprintf("\t%v", k))
+					if plain {
+						color.HiRed(fmt.Sprintf("\t%v", k))
+					} else if jsonFlag {
+						alt.Unused = append(alt.Unused, k)
+					}
+
 				} else {
-					color.HiGreen(fmt.Sprintf("\t%v", k))
+					if plain {
+						color.HiGreen(fmt.Sprintf("\t%v", k))
+					} else if jsonFlag {
+						alt.Used = append(alt.Used, k)
+					}
 				}
 			}
+			res.POs = append(res.POs, alt)
 		}
+	}
+
+	if jsonFlag {
+		res, err := json.Marshal(res)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println(string(res))
 	}
 }
 
+type Result struct {
+	Alts []Alternative
+	POs  []Alternative
+}
+type Alternative struct {
+	Op     string   `json:"op"`
+	Used   []string `json:"used"`
+	Unused []string `json:"unused"`
+}
+
 func main() {
-	color.HiGreen("Covered schedules")
-	color.HiRed("Uncovered schedules")
-	color.HiYellow("-----------------------")
 	trace := flag.String("trace", "", "path to trace")
+	json := flag.Bool("json", false, "output as json")
+	plain := flag.Bool("plain", false, "output as plain text")
 	flag.Parse()
+
+	if !*json && !*plain {
+		panic("no output format defined")
+	}
 
 	if trace == nil || *trace == "" {
 		panic("no valid trace file")
+	}
+
+	if *plain {
+		color.HiGreen("Covered schedules")
+		color.HiRed("Uncovered schedules")
+		color.HiYellow("-----------------------")
 	}
 
 	items := parseTrace(*trace)
@@ -996,6 +1058,6 @@ func main() {
 	closed := make(map[string]struct{})
 	closed["0"] = struct{}{}
 	// simulate([]machine{machine{threads, aChans, closed, false}})
-	addVCs(&machine{threads, aChans, closed, make(map[string]VectorClock), false})
+	addVCs(&machine{threads, aChans, closed, make(map[string]VectorClock), false}, *json, *plain)
 
 }
