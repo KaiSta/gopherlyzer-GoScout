@@ -467,10 +467,13 @@ func (p *ASTParser) handleBlockStmt(in *ast.BlockStmt) *ast.BlockStmt {
 					if funDec.Type.Params != nil {
 						//list = funDec.Type.Params.List
 						for i, f := range funDec.Type.Params.List {
-							n := x.Call.Args[i].(*ast.Ident)
-							nf := &ast.Field{Type: f.Type, Names: []*ast.Ident{n}}
+							var nf *ast.Field
+							if n, ok := x.Call.Args[i].(*ast.Ident); ok {
+								nf = &ast.Field{Type: f.Type, Names: []*ast.Ident{n}}
+							} else if _, ok := x.Call.Args[i].(*ast.BasicLit); ok {
+								nf = &ast.Field{Type: f.Type}
+							}
 							list = append(list, nf)
-
 						}
 					}
 				}
