@@ -11,16 +11,14 @@ set of alternative communications on the command line.
 
 ## Description
 
-We consider the task of analyzing message-passing programs
-by observing their run-time behavior.
-We introduce a simple instrumentation method to trace communication events
-during execution. A model of the dependencies among events can
-be constructed to identify  potential bugs.
+We consider the task of analyzing message-passing programs by observing their run-time behavior.
+We introduce a purely library-based instrumentation method to trace communication events
+during execution. A model of the dependencies among events can be constructed to identify  potential bugs.
 Compared to the vector clock method, our approach is much simpler and
 has in general a significant lower run-time overhead.
 A further advantage is that we also trace events
-that could not commit. Thus, we can infer
-alternative communications which provides useful information to the user.
+that could not commit. Thus, we can infer more alternative communications.
+This provides the user with additional information to identify potential bugs.
 We have fully implemented our approach in the Go programming language
 and provide a number of examples to substantiate our claims.
 
