@@ -1,12 +1,12 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/fatih/color"
 )
@@ -713,9 +713,11 @@ func getAsyncChans(items []Item) map[string][]Item {
 	return chans
 }
 
-func addVCs(m *machine, jsonFlag, plain bool) {
+func addVCs(m *machine, jsonFlag, plain, bench bool) []Item {
 	var items []Item
-	chosenPartner := make(map[string]Item)
+	//chosenPartner := make(map[string]Item)
+	//chosenPartner := make(map[])
+	s3 := time.Now()
 	for {
 		pairs := m.getSyncPairs()
 		pairs = append(pairs, m.getAsyncActions()...)
@@ -764,8 +766,8 @@ func addVCs(m *machine, jsonFlag, plain bool) {
 					items = append(items, t1.events[0])
 					items = append(items, t1.events[1])
 
-					chosenPartner[t1.events[0].ShortString()] = partner
-					chosenPartner[partner.ShortString()] = t1.events[0]
+					//chosenPartner[t1.events[0].ShortString()] = partner
+					//	chosenPartner[partner.ShortString()] = t1.events[0]
 
 					t1.pop()
 					t1.pop()
@@ -825,8 +827,8 @@ func addVCs(m *machine, jsonFlag, plain bool) {
 				t1.events[1].vc = t1.vc.clone()
 				t2.events[1].vc = t2.vc.clone()
 
-				chosenPartner[t1.events[0].ShortString()] = t2.peek()
-				chosenPartner[t2.events[0].ShortString()] = t1.peek()
+				//	chosenPartner[t1.events[0].ShortString()] = t2.peek()
+				//	chosenPartner[t2.events[0].ShortString()] = t1.peek()
 
 				items = append(items, t1.events[0])
 				items = append(items, t1.events[1])
@@ -861,154 +863,386 @@ func addVCs(m *machine, jsonFlag, plain bool) {
 		}
 
 	}
-	// for _, it := range items {
-	// 	fmt.Println(it)
+	fmt.Println("Prep2Time:", time.Since(s3))
+	fmt.Println(len(items))
+	return items
+	// // for _, it := range items {
+	// // 	fmt.Println(it)
+	// // }
+	// // fmt.Printf("\n\n")
+	// res := Result{}
+	// noAlts := true
+	// s4 := time.Now()
+	// cache := make(map[struct {
+	// 	ch string
+	// 	op OpKind
+	// }][]*Item)
+	// //fill cache in advance
+	// for i, it := range items {
+	// 	for _, op := range it.ops {
+	// 		s := struct {
+	// 			ch string
+	// 			op OpKind
+	// 		}{op.ch, op.kind}
+	// 		tmp := cache[s]
+	// 		tmp = append(tmp, &items[i])
+	// 		cache[s] = tmp
+	// 	}
 	// }
-	// fmt.Printf("\n\n")
-	res := Result{}
-	noAlts := true
-	for _, it := range items {
-		alt := Alternative{Op: "", Unused: make([]string, 0), Used: make([]string, 0)}
-		alternatives := make(map[string]struct{}) // []Item
+
+	// var alternatives []Alternative
+
+	// for k, v := range cache {
+	// 	if k.op&PREPARE > 0 {
+	// 		opKind := OpKind(0)
+	// 		if k.op == PREPARE|RCV {
+	// 			opKind = PREPARE | SEND
+	// 		} else if k.op == PREPARE|SEND {
+	// 			opKind = PREPARE | RCV
+	// 		}
+	// 		s := struct {
+	// 			ch string
+	// 			op OpKind
+	// 		}{k.ch, opKind}
+	// 		partners := cache[s]
+
+	// 		for _, x := range v {
+	// 			alt := Alternative{Op: x.ShortString(), Unused: make([]string, 0), Used: make([]string, 0)}
+	// 			//	fmt.Println("alternatives for", x.ShortString())
+	// 			for _, y := range partners {
+	// 				if x.thread == y.thread {
+	// 					continue
+	// 				}
+	// 				if !x.vc.less(y.vc) && !y.vc.less(x.vc) {
+	// 					alt.Unused = append(alt.Unused, y.ShortString())
+	// 					//fmt.Println("\t", y.ShortString())
+	// 				}
+	// 			}
+	// 			if len(alt.Unused) > 1 {
+	// 				alternatives = append(alternatives, alt)
+	// 			}
+
+	// 		}
+	// 	}
+	// }
+	// fmt.Println("found", len(alternatives), "alternatives")
+
+	// if plain {
+	// 	for _, x := range alternatives {
+	// 		fmt.Println("alternatives for", x.Op)
+	// 		for i := range x.Unused {
+	// 			color.HiRed(fmt.Sprintf("\t%v", x.Unused[i]))
+	// 		}
+	// 	}
+	// }
+
+	// // for _, it := range items {
+	// // 	alt := Alternative{Op: "", Unused: make([]string, 0), Used: make([]string, 0)}
+	// // 	alternatives := make(map[string]struct{}) // []Item
+	// // 	for _, op := range it.ops {
+	// // 		opKind := OpKind(0)
+	// // 		if op.kind == OpKind(PREPARE|RCV) {
+	// // 			opKind = PREPARE | SEND
+	// // 		} else if op.kind == PREPARE|SEND {
+	// // 			opKind = PREPARE | RCV
+	// // 		} else {
+	// // 			continue
+	// // 		}
+	// // 		//add item to cache
+	// // 		s := fmt.Sprintf("%v%v", op.ch, op.kind)
+	// // 		tmp := cache[s]
+	// // 		tmp = append(tmp, it)
+	// // 		cache[s] = tmp
+
+	// // 		//look for an alternative
+	// // 		s = fmt.Sprintf("%v%v", op.ch, opKind)
+	// // 		partners := cache[s]
+
+	// // 		// //var alternatives []Item
+	// // 		// for _, x := range items {
+	// // 		// 	for _, y := range x.ops {
+	// // 		// 		if y.kind != opKind /*OpKind(PREPARE|SEND)*/ || y.ch != op.ch || x.thread == it.partner || x.thread == it.thread {
+	// // 		// 			continue
+	// // 		// 		}
+	// // 		// 		if !x.vc.less(it.vc) && !it.vc.less(x.vc) {
+	// // 		// 			//	alternatives = append(alternatives, x)
+	// // 		// 			alternatives[x.ShortString()] = struct{}{}
+	// // 		// 		}
+	// // 		// 	}
+	// // 		// }
+	// // 		// // for k := range alternatives {
+	// // 		// // 	fmt.Println("\t", k)
+	// // 		// // }
+	// // 	}
+
+	// // 	if len(alternatives) > 0 && !bench {
+	// // 		noAlts = false
+	// // 		f := false
+	// // 		if plain {
+	// // 			fmt.Println("Alternatives for", it)
+	// // 		}
+	// // 		// for _, x := range alternatives {
+	// // 		// 	color.HiRed(fmt.Sprintf("\t%v", x))
+	// // 		// }
+	// // 		vv, ok := chosenPartner[it.ShortString()]
+	// // 		alt.Op = it.ShortString()
+	// // 		for k := range alternatives {
+	// // 			if ok && vv.ShortString() == k {
+	// // 				continue
+	// // 			}
+	// // 			//	f = true
+	// // 			if plain {
+	// // 				color.HiRed(fmt.Sprintf("\t%v", k))
+
+	// // 			} else if jsonFlag {
+	// // 				alt.Unused = append(alt.Used, k)
+	// // 			}
+	// // 		}
+
+	// // 		if ok {
+	// // 			if plain {
+	// // 				color.HiGreen(fmt.Sprintf("\t%v", vv.ShortString()))
+	// // 			} else if jsonFlag {
+	// // 				alt.Used = append(alt.Used, vv.ShortString())
+	// // 			}
+	// // 		}
+	// // 		if f {
+	// // 			return
+	// // 		}
+	// // 	}
+
+	// // 	if jsonFlag && alt.Op != "" {
+	// // 		res.Alts = append(res.Alts, alt)
+	// // 	}
+	// // }
+	// if noAlts {
+	// 	if plain {
+	// 		fmt.Println("No alternatives found!")
+	// 	}
+	// }
+	// fmt.Println("AlternativeSearchTime:", time.Since(s4))
+	// // for _, it := range items {
+	// // 	fmt.Println(">>>", it)
+	// // }
+
+	// // for k, v := range chosenPartner {
+	// // 	fmt.Println(">>>", k, v)
+	// // }
+
+	// // if bench {
+	// // 	return
+	// // }
+
+	// //check for close operations and what operations happend parallel on the same channel
+	// //this way we can find another kind of alternative schedules! in which for example a receive or even a send happened
+	// //shortly before the close but also could have happend afterwards!
+	// if plain {
+	// 	fmt.Printf("\n\n")
+	// }
+
+	// for _, it := range items {
+	// 	for _, op := range it.ops {
+	// 		if op.kind != COMMIT|CLS {
+	// 			continue
+	// 		}
+	// 		//var altNAfter []Item
+	// 		altNAfter := make(map[string]int)
+	// 		for _, x := range items {
+	// 			for _, y := range x.ops {
+	// 				if y.ch != op.ch || y.kind&CLS > 0 {
+	// 					continue
+	// 				}
+	// 				v := 0
+	// 				if y.kind&SEND > 0 {
+	// 					v = 1
+	// 				}
+	// 				if !x.vc.less(it.vc) && !it.vc.less(x.vc) {
+	// 					altNAfter[x.ShortString()] = v
+	// 					//	altNAfter = append(altNAfter, x)
+	// 				} else if it.vc.less(x.vc) {
+	// 					altNAfter[x.ShortString()] = v
+	// 					//	altNAfter = append(altNAfter, x)
+	// 				}
+	// 			}
+	// 		}
+
+	// 		if plain {
+	// 			fmt.Println("Actions parallel or after", it)
+	// 		}
+	// 		alt := Alternative{Op: it.ShortString(), Used: make([]string, 0), Unused: make([]string, 0)}
+	// 		for k, v := range altNAfter {
+	// 			if v > 0 {
+	// 				if plain {
+	// 					color.HiRed(fmt.Sprintf("\t%v", k))
+	// 				} else if jsonFlag {
+	// 					alt.Unused = append(alt.Unused, k)
+	// 				}
+
+	// 			} else {
+	// 				if plain {
+	// 					color.HiGreen(fmt.Sprintf("\t%v", k))
+	// 				} else if jsonFlag {
+	// 					alt.Used = append(alt.Used, k)
+	// 				}
+	// 			}
+	// 		}
+	// 		res.POs = append(res.POs, alt)
+	// 	}
+	// }
+
+	// if jsonFlag {
+	// 	res, err := json.Marshal(res)
+	// 	if err != nil {
+	// 		panic(err)
+	// 	}
+	// 	fmt.Println(string(res))
+	// }
+}
+
+func findAlternatives(items []Item, plain, json, bench bool) {
+	s4 := time.Now()
+	cache := make(map[struct {
+		ch string
+		op OpKind
+	}][]*Item)
+
+	//fill cache in advance
+	for i, it := range items {
 		for _, op := range it.ops {
+			s := struct {
+				ch string
+				op OpKind
+			}{op.ch, op.kind}
+			tmp := cache[s]
+			tmp = append(tmp, &items[i])
+			cache[s] = tmp
+		}
+
+	}
+
+	usedMap := make(map[string]string)
+	for k, v := range cache {
+		if k.op&COMMIT > 0 {
+			for _, x := range v {
+				if len(x.partner) > 0 { //rcv commit
+					usedMap[x.ops[0].sourceRef] = x.partner
+					usedMap[x.partner] = x.ops[0].sourceRef
+				}
+			}
+		}
+	}
+
+	var alternatives []Alternative2
+
+	//alternatives := make(map[string]Alternative2)
+	for k, v := range cache {
+		if k.op&PREPARE > 0 {
 			opKind := OpKind(0)
-			if op.kind == OpKind(PREPARE|RCV) {
+			if k.op == PREPARE|RCV {
 				opKind = PREPARE | SEND
-			} else if op.kind == PREPARE|SEND {
+			} else if k.op == PREPARE|SEND {
 				opKind = PREPARE | RCV
-			} else {
-				continue
 			}
+			s := struct {
+				ch string
+				op OpKind
+			}{k.ch, opKind}
+			partners := cache[s]
 
-			//var alternatives []Item
-			for _, x := range items {
-				for _, y := range x.ops {
-					if y.kind != opKind /*OpKind(PREPARE|SEND)*/ || y.ch != op.ch || x.thread == it.partner || x.thread == it.thread {
+			for _, x := range v {
+				alt := Alternative2{Op: x, Unused: make([]*Item, 0), Used: make([]*Item, 0)}
+				//	fmt.Println("alternatives for", x.ShortString())
+				for _, y := range partners {
+					if x.thread == y.thread {
 						continue
 					}
-					if !x.vc.less(it.vc) && !it.vc.less(x.vc) {
-						//	alternatives = append(alternatives, x)
-						alternatives[x.ShortString()] = struct{}{}
+
+					if !x.vc.less(y.vc) && !y.vc.less(x.vc) {
+						used := false
+						if usedMap[x.thread] == y.ops[0].sourceRef || usedMap[y.thread] == x.ops[0].sourceRef {
+							used = true
+						}
+						if usedMap[x.ops[0].sourceRef] == y.thread || usedMap[y.ops[0].sourceRef] == x.thread {
+							used = true
+						}
+
+						if used {
+							alt.Used = append(alt.Used, y)
+						} else {
+							alt.Unused = append(alt.Unused, y)
+						}
+
 					}
 				}
-			}
-			// for k := range alternatives {
-			// 	fmt.Println("\t", k)
-			// }
-		}
-		if len(alternatives) > 0 {
-			noAlts = false
-
-			if plain {
-				fmt.Println("Alternatives for", it)
-			}
-			// for _, x := range alternatives {
-			// 	color.HiRed(fmt.Sprintf("\t%v", x))
-			// }
-			vv, ok := chosenPartner[it.ShortString()]
-			alt.Op = it.ShortString()
-			for k := range alternatives {
-				if ok && vv.ShortString() == k {
-					continue
-				}
-				if plain {
-					color.HiRed(fmt.Sprintf("\t%v", k))
-				} else if jsonFlag {
-					alt.Unused = append(alt.Used, k)
+				if len(alt.Unused) > 0 || len(alt.Used) > 0 {
+					alternatives = append(alternatives, alt)
+					//alternatives[alt.Op.ShortString()] = alt
 				}
 			}
-
-			if ok {
-				if plain {
-					color.HiGreen(fmt.Sprintf("\t%v", vv.ShortString()))
-				} else if jsonFlag {
-					alt.Used = append(alt.Used, vv.ShortString())
-				}
-			}
-		}
-
-		if jsonFlag && alt.Op != "" {
-			res.Alts = append(res.Alts, alt)
-		}
-	}
-	if noAlts {
-		if plain {
-			fmt.Println("No alternatives found!")
 		}
 	}
 
-	// for _, it := range items {
-	// 	fmt.Println(">>>", it)
-	// }
+	fmt.Println("found", len(alternatives), "alternatives")
 
-	// for k, v := range chosenPartner {
-	// 	fmt.Println(">>>", k, v)
-	// }
-
-	//check for close operations and what operations happend parallel on the same channel
-	//this way we can find another kind of alternative schedules! in which for example a receive or even a send happened
-	//shortly before the close but also could have happend afterwards!
 	if plain {
-		fmt.Printf("\n\n")
+		for _, x := range alternatives {
+			fmt.Println("alternatives for", x.Op)
+			for i := range x.Unused {
+				color.HiRed(fmt.Sprintf("\t%v", x.Unused[i].ShortString()))
+			}
+			for i := range x.Used {
+				color.HiGreen(fmt.Sprintf("\t%v", x.Used[i].ShortString()))
+			}
+		}
+	}
+	fmt.Println("AlternativeSearchTime:", time.Since(s4))
+
+	if bench || json {
+		return
 	}
 
-	for _, it := range items {
-		for _, op := range it.ops {
-			if op.kind != COMMIT|CLS {
-				continue
-			}
-			//var altNAfter []Item
-			altNAfter := make(map[string]int)
-			for _, x := range items {
-				for _, y := range x.ops {
-					if y.ch != op.ch || y.kind&CLS > 0 {
-						continue
-					}
-					v := 0
-					if y.kind&SEND > 0 {
-						v = 1
-					}
-					if !x.vc.less(it.vc) && !it.vc.less(x.vc) {
-						altNAfter[x.ShortString()] = v
-						//	altNAfter = append(altNAfter, x)
-					} else if it.vc.less(x.vc) {
-						altNAfter[x.ShortString()] = v
-						//	altNAfter = append(altNAfter, x)
-					}
+	for k, v := range cache {
+		if k.op != COMMIT|CLS {
+			continue
+		}
+		for _, c := range v {
+			fmt.Println("parallel to", c)
+			//rcv partner
+			s := struct {
+				ch string
+				op OpKind
+			}{k.ch, PREPARE | RCV}
+			rcvpartners := cache[s]
+			for _, x := range rcvpartners {
+				if !x.vc.less(c.vc) && !c.vc.less(x.vc) {
+					color.HiGreen("\t%v", x.ShortString())
 				}
 			}
 
-			if plain {
-				fmt.Println("Actions parallel or after", it)
-			}
-			alt := Alternative{Op: it.ShortString(), Used: make([]string, 0), Unused: make([]string, 0)}
-			for k, v := range altNAfter {
-				if v > 0 {
-					if plain {
-						color.HiRed(fmt.Sprintf("\t%v", k))
-					} else if jsonFlag {
-						alt.Unused = append(alt.Unused, k)
-					}
-
-				} else {
-					if plain {
-						color.HiGreen(fmt.Sprintf("\t%v", k))
-					} else if jsonFlag {
-						alt.Used = append(alt.Used, k)
-					}
+			//snd partner
+			s = struct {
+				ch string
+				op OpKind
+			}{k.ch, PREPARE | SEND}
+			sndpartners := cache[s]
+			for _, x := range sndpartners {
+				if !x.vc.less(c.vc) && !c.vc.less(x.vc) {
+					color.HiRed("\t%v", x.ShortString())
 				}
 			}
-			res.POs = append(res.POs, alt)
 		}
+
 	}
 
-	if jsonFlag {
-		res, err := json.Marshal(res)
-		if err != nil {
-			panic(err)
-		}
-		fmt.Println(string(res))
-	}
+}
+
+type Node struct {
+	item       Item
+	neighbours []*Node
+}
+
+func dgAnalysis(m *machine, jsonFlag, plain bool) {
+
 }
 
 type Result struct {
@@ -1020,14 +1254,20 @@ type Alternative struct {
 	Used   []string `json:"used"`
 	Unused []string `json:"unused"`
 }
+type Alternative2 struct {
+	Op     *Item
+	Used   []*Item
+	Unused []*Item
+}
 
 func main() {
 	trace := flag.String("trace", "", "path to trace")
 	json := flag.Bool("json", false, "output as json")
 	plain := flag.Bool("plain", false, "output as plain text")
+	bench := flag.Bool("bench", false, "used for benchmarks only")
 	flag.Parse()
 
-	if !*json && !*plain {
+	if !*json && !*plain && !*bench {
 		panic("no output format defined")
 	}
 
@@ -1041,8 +1281,12 @@ func main() {
 		color.HiYellow("-----------------------")
 	}
 
+	s1 := time.Now()
 	items := parseTrace(*trace)
+	fmt.Println("ParseTime:", time.Since(s1))
+	s2 := time.Now()
 	threads := createThreads(items)
+	fmt.Println("Prep1Time:", time.Since(s2))
 	aChans := getAsyncChans(items)
 
 	// for _, x := range items {
@@ -1058,6 +1302,9 @@ func main() {
 	closed := make(map[string]struct{})
 	closed["0"] = struct{}{}
 	// simulate([]machine{machine{threads, aChans, closed, false}})
-	addVCs(&machine{threads, aChans, closed, make(map[string]VectorClock), false}, *json, *plain)
+	start := time.Now()
+	res := addVCs(&machine{threads, aChans, closed, make(map[string]VectorClock), false}, *json, *plain, *bench)
+	findAlternatives(res, *plain, *json, *bench)
+	fmt.Println(time.Since(start))
 
 }
