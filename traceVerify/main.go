@@ -1125,8 +1125,8 @@ func findAlternatives(items []Item, plain, json, bench bool) {
 		if k.op&COMMIT > 0 {
 			for _, x := range v {
 				if len(x.partner) > 0 { //rcv commit
-					usedMap[x.ops[0].sourceRef] = x.partner
-					usedMap[x.partner] = x.ops[0].sourceRef
+					usedMap[x.ops[0].sourceRef+x.thread] = x.partner
+					usedMap[x.partner] = x.ops[0].sourceRef + x.thread
 				}
 			}
 		}
@@ -1159,10 +1159,11 @@ func findAlternatives(items []Item, plain, json, bench bool) {
 
 					if !x.vc.less(y.vc) && !y.vc.less(x.vc) {
 						used := false
-						if usedMap[x.thread] == y.ops[0].sourceRef || usedMap[y.thread] == x.ops[0].sourceRef {
+
+						if usedMap[x.thread] == y.ops[0].sourceRef+y.thread || usedMap[y.thread] == x.ops[0].sourceRef+x.thread {
 							used = true
 						}
-						if usedMap[x.ops[0].sourceRef] == y.thread || usedMap[y.ops[0].sourceRef] == x.thread {
+						if usedMap[x.ops[0].sourceRef+x.thread] == y.thread || usedMap[y.ops[0].sourceRef+y.thread] == x.thread {
 							used = true
 						}
 
