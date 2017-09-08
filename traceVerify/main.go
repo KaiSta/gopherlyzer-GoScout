@@ -1234,21 +1234,242 @@ func findAlternatives(items []Item, plain, json, bench bool) {
 		}
 
 	}
+}
 
+func findAlternatives2(items []Item, plain, json, bench bool) {
+	s5 := time.Now()
+
+	parallelGroups := make([][]*Item, 0)
+
+	for i, it := range items {
+		if it.ops[0].kind&COMMIT > 0 {
+			continue
+		}
+		found := false
+		for j, pg := range parallelGroups {
+			if len(pg) > 0 {
+				if !it.vc.less(pg[0].vc) && !pg[0].vc.less(it.vc) {
+					found = true
+					parallelGroups[j] = append(parallelGroups[j], &items[i])
+				}
+			}
+		}
+
+		if !found {
+			parallelGroups = append(parallelGroups, []*Item{&items[i]})
+		}
+	}
+
+	for i, pg := range parallelGroups {
+		fmt.Println("group", i)
+		fmt.Println("\t", pg)
+	}
+
+	fmt.Println("findAlts2 Time:", time.Since(s5))
 }
 
 type Node struct {
-	item       Item
+	item       *Item
 	neighbours []*Node
 }
 
-func dgAnalysis(m *machine, jsonFlag, plain bool) {
+func (n Node) String() string {
+	return n.item.ShortString()
+	//return fmt.Sprintf("(%v%v|%v)", n.item.ops[0].ch, n.item.ops[0].kind, n.item.thread)
+}
 
+func dgAnalysis(m *machine, jsonFlag, plain bool) []*Node {
+	var threadGraphs []*Node
+
+	for _, t := range m.threads {
+		start := &Node{item: &t.events[0]}
+		curr := start
+		for i := 1; i < len(t.events); i++ {
+			n := &Node{item: &t.events[i]}
+			curr.neighbours = append(curr.neighbours, n)
+			curr = n
+		}
+		threadGraphs = append(threadGraphs, start)
+	}
+
+	for _, g := range threadGraphs {
+		curr := g
+		for {
+			fmt.Printf("(%v%v|%v)", curr.item.ops[0].ch, curr.item.ops[0].kind, curr.item.thread)
+			if len(curr.neighbours) > 0 {
+				fmt.Printf("->")
+				curr = curr.neighbours[0]
+			} else {
+				fmt.Printf("\n")
+				break
+			}
+		}
+	}
+
+	//reader := bufio.NewReader(os.Stdin)
+
+	copyGraph := append([]*Node{}, threadGraphs...)
+	for {
+		done := 0
+		for _, g := range copyGraph {
+			if g == nil || len(g.neighbours) == 0 {
+				done++
+			}
+		}
+		if done == len(copyGraph) {
+			break
+		}
+
+		//find match
+		for i, g := range copyGraph {
+			if g == nil {
+				continue
+			}
+			if g.item.ops[0].kind != PREPARE|RCV {
+				continue
+			}
+
+			for j, h := range copyGraph {
+				if h == nil {
+					continue
+				}
+
+				if h.item.ops[0].ch == g.item.ops[0].ch && h.item.ops[0].kind == PREPARE|SEND {
+					//look ahead the commit event of g
+					gCommit := g.neighbours[0]
+					if gCommit.item.partner == h.item.thread {
+						// matching partner found
+						copyGraph[j].neighbours = append(copyGraph[j].neighbours, copyGraph[i])
+						if len(gCommit.neighbours) > 0 {
+							copyGraph[i] = gCommit.neighbours[0]
+						} else {
+							copyGraph[i] = nil
+						}
+						if len(copyGraph[j].neighbours) > 0 {
+							copyGraph[j] = copyGraph[j].neighbours[0]
+							if len(copyGraph[j].neighbours) > 0 {
+								copyGraph[j] = copyGraph[j].neighbours[0] //jump over commit
+							} else {
+								copyGraph[j] = nil
+							} //else there is not next event for this graph
+						} else {
+							copyGraph[j] = nil
+						}
+						break
+					}
+
+				}
+			}
+
+			fmt.Println("---")
+		}
+	}
+
+	for _, g := range threadGraphs {
+		curr := g
+		for {
+			fmt.Printf("(%v%v|%v)", curr.item.ops[0].ch, curr.item.ops[0].kind, curr.item.thread)
+			for i := 1; i < len(curr.neighbours); i++ {
+				fmt.Printf("-%v>", curr.neighbours[i].item.thread)
+				fmt.Printf("(%v%v|%v)", curr.neighbours[i].item.ops[0].ch, curr.neighbours[i].item.ops[0].kind, curr.neighbours[i].item.thread)
+			}
+			if len(curr.neighbours) > 0 {
+				fmt.Printf("-%v>", curr.neighbours[0].item.thread)
+				curr = curr.neighbours[0]
+			} else {
+				fmt.Printf("\n")
+				break
+			}
+		}
+	}
+
+	return threadGraphs
+}
+
+func reaches(start *Node) []*Node {
+	// op := OpKind(0)
+	// if start.item.ops[0].kind == PREPARE|RCV {
+	// 	op = PREPARE | SEND
+	// } else if start.item.ops[0].kind == PREPARE|SEND {
+	// 	op = PREPARE | RCV
+	// }
+
+	var reachable []*Node
+	for _, n := range start.neighbours {
+		if !(n.item.ops[0].ch == start.item.ops[0].ch) {
+			continue
+		}
+		reachable = append(reachable, n)
+		reachable = append(reachable, reaches(n)...)
+	}
+	return reachable
+}
+
+func contains(n *Node, s []*Node) bool {
+	for i := range s {
+		if s[i] == n {
+			return true
+		}
+	}
+	return false
+}
+
+func findDGAlternatives(threadGraphs []*Node) {
+	reachAb := make(map[*Node][]*Node)
+	for _, g := range threadGraphs {
+		curr := g
+		for {
+			if curr.item.ops[0].kind&PREPARE > 0 {
+				tmp := reachAb[curr]
+				tmp = append(tmp, reaches(curr)...)
+				reachAb[curr] = tmp
+			}
+			if len(curr.neighbours) > 0 {
+				curr = curr.neighbours[0]
+			} else {
+				break
+			}
+		}
+	}
+	for k, v := range reachAb {
+		fmt.Println("Reach for", k)
+		fmt.Println("\t", v)
+	}
+
+	alternatives := make(map[*Item][]*Item)
+	for k, w := range reachAb {
+		op := OpKind(0)
+		if k.item.ops[0].kind == PREPARE|RCV {
+			op = PREPARE | SEND
+		} else if k.item.ops[0].kind == PREPARE|SEND {
+			op = PREPARE | RCV
+		}
+		for l, v := range reachAb {
+			if !(k.item.ops[0].ch == l.item.ops[0].ch && l.item.ops[0].kind == op) {
+				continue
+			}
+			if !contains(l, w) && !contains(k, v) {
+				tmp := alternatives[k.item]
+				tmp = append(tmp, l.item)
+				alternatives[k.item] = tmp
+				tmp2 := alternatives[l.item]
+				tmp2 = append(tmp2, k.item)
+				alternatives[l.item] = tmp2
+			}
+		}
+	}
+
+	for k, v := range alternatives {
+		if len(v) > 0 {
+			fmt.Println("Alternatives for", k)
+			fmt.Println("\t", v)
+		}
+	}
 }
 
 type Result struct {
-	Alts []Alternative
-	POs  []Alternative
+	Alts []Alternative2
+	POs  []Alternative2
 }
 type Alternative struct {
 	Op     string   `json:"op"`
@@ -1304,8 +1525,17 @@ func main() {
 	closed["0"] = struct{}{}
 	// simulate([]machine{machine{threads, aChans, closed, false}})
 	start := time.Now()
+
+	// graph := dgAnalysis(&machine{threads, aChans, closed, make(map[string]VectorClock), false}, *json, *plain)
+	// fmt.Println("****")
+	// findDGAlternatives(graph)
+	// fmt.Println("****")
+
 	res := addVCs(&machine{threads, aChans, closed, make(map[string]VectorClock), false}, *json, *plain, *bench)
+
+	//findAlternatives2(res, *plain, *json, *bench)
 	findAlternatives(res, *plain, *json, *bench)
+
 	fmt.Println(time.Since(start))
 
 }
