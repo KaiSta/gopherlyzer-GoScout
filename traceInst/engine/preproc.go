@@ -457,6 +457,18 @@ func (p *ASTParser) handleBlockStmt(in *ast.BlockStmt) *ast.BlockStmt {
 		case *ast.SelectStmt:
 			p.handleSelect(x, out)
 		case *ast.GoStmt:
+			//get new sigWaitID
+			p.nameID++
+			varName := fmt.Sprintf("tmp%v", p.nameID)
+			getSWIDSel := &ast.SelectorExpr{X: ast.NewIdent("tracer"), Sel: ast.NewIdent("GetWaitSigID")}
+			callgetSWID := &ast.CallExpr{Fun: getSWIDSel, Args: make([]ast.Expr, 0)}
+			ass := &ast.AssignStmt{Lhs: []ast.Expr{ast.NewIdent(varName)}, Rhs: []ast.Expr{callgetSWID}, Tok: token.DEFINE}
+			out.List = append(out.List, ass)
+
+			sel2 := &ast.SelectorExpr{X: ast.NewIdent("tracer"), Sel: ast.NewIdent("AddSignal")}
+			call2 := &ast.CallExpr{Fun: sel2, Args: []ast.Expr{ast.NewIdent(varName)}}
+			out.List = append(out.List, &ast.ExprStmt{X: call2})
+
 			var funName string
 			anno := false
 			var list []*ast.Field
@@ -471,7 +483,14 @@ func (p *ASTParser) handleBlockStmt(in *ast.BlockStmt) *ast.BlockStmt {
 							if n, ok := x.Call.Args[i].(*ast.Ident); ok {
 								nf = &ast.Field{Type: f.Type, Names: []*ast.Ident{n}}
 							} else if _, ok := x.Call.Args[i].(*ast.BasicLit); ok {
-								nf = &ast.Field{Type: f.Type}
+								//fmt.Println("tada!!", f.Type, f.Names)
+								if len(f.Names) > 0 {
+									nf = &ast.Field{Type: f.Type, Names: f.Names}
+								} else {
+									nf = &ast.Field{Type: f.Type}
+								}
+							} else {
+								nf = &ast.Field{Type: f.Type, Names: f.Names}
 							}
 							list = append(list, nf)
 						}
@@ -486,7 +505,7 @@ func (p *ASTParser) handleBlockStmt(in *ast.BlockStmt) *ast.BlockStmt {
 
 			b := &ast.BasicLit{Kind: token.STRING, Value: funName}
 			sel := &ast.SelectorExpr{X: ast.NewIdent("tracer"), Sel: ast.NewIdent("RegisterThread")}
-			call := &ast.CallExpr{Fun: sel, Args: []ast.Expr{b}}
+			call := &ast.CallExpr{Fun: sel, Args: []ast.Expr{b, ast.NewIdent(varName)}}
 			ft := &ast.FuncType{Params: &ast.FieldList{List: list}}
 			var body *ast.BlockStmt
 			if !anno {
@@ -498,6 +517,7 @@ func (p *ASTParser) handleBlockStmt(in *ast.BlockStmt) *ast.BlockStmt {
 			}
 			fl := &ast.FuncLit{Body: body, Type: ft}
 			x.Call = &ast.CallExpr{Fun: fl, Args: x.Call.Args}
+
 			out.List = append(out.List, x)
 		case *ast.DeclStmt:
 			switch y := x.Decl.(type) {

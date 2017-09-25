@@ -17,6 +17,8 @@ const (
 	SEND      = 1 << iota
 	RCV       = 1 << iota
 	CLS       = 1 << iota
+	SIG       = 1 << iota
+	WAIT      = 1 << iota
 	RMVSEND   = 0xF ^ SEND
 	RMVRCV    = 0xF ^ RCV
 	RMVPREP   = 0xF ^ PREPARE
@@ -43,6 +45,14 @@ func (k OpKind) String() string {
 		sym = "#"
 	}
 	if k&COMMIT > 0 {
+		stat = "C"
+	}
+
+	if k&WAIT > 0 {
+		sym = "W"
+		stat = "C"
+	} else if k&SIG > 0 {
+		sym = "S"
 		stat = "C"
 	}
 	return fmt.Sprintf("%v,%v", sym, stat)
@@ -174,6 +184,10 @@ func getOps(l string) ([]Operation, string) {
 				curr.kind |= RCV
 			} else if c == '#' {
 				curr.kind |= CLS
+			} else if c == 'W' {
+				curr.kind |= WAIT
+			} else if c == 'S' {
+				curr.kind |= SIG
 			}
 			if c == ',' {
 				s++
@@ -210,6 +224,7 @@ func getOps(l string) ([]Operation, string) {
 		}
 	}
 	i++
+
 	return ops, l[i:]
 }
 
@@ -376,6 +391,7 @@ type syncPair struct {
 	asyncRcv  bool
 	closed    bool
 	doClose   bool
+	GoStart   bool
 	idx       int
 	t2Idx     int
 }
@@ -429,6 +445,36 @@ func (m *machine) getAsyncActions() (ret []syncPair) {
 				list := m.asyncChans[op.ch]
 				if len(list) > 0 {
 					ret = append(ret, syncPair{t1: t.ID, t2: op.ch, asyncRcv: true})
+				}
+			}
+		}
+	}
+	return
+}
+
+func (m *machine) getThreadStarts() (ret map[string]string) {
+	ret = make(map[string]string)
+	for _, t := range m.threads {
+		if len(t.events) == 0 {
+			continue
+		}
+		e := t.peek()
+		for _, op := range e.ops {
+			partner := OpKind(SIG)
+			if op.kind&SIG > 0 {
+				partner = WAIT
+			}
+			for _, j := range m.threads {
+				for _, op2 := range j.peek().ops {
+					if op2.kind&partner > 0 && op.ch == op2.ch {
+						if op.kind&SIG > 0 {
+							ret[t.ID] = j.ID
+							//ret = append(ret, syncPair{t1: t.ID, t2: j.ID, GoStart: true})
+						} else {
+							ret[j.ID] = t.ID
+							//	ret = append(ret, syncPair{t1: j.ID, t2: t.ID, GoStart: true})
+						}
+					}
 				}
 			}
 		}
@@ -497,6 +543,26 @@ func (m *machine) sync(p syncPair, possiblePaths map[string]map[string]struct {
 		m.threads[p.t1] = t1
 	}
 }
+
+func (m *machine) startAllthreads() {
+	for {
+		threads := m.getThreadStarts()
+		if len(threads) == 0 {
+			return
+		}
+
+		for k, v := range threads {
+			t1 := m.threads[k]
+			t2 := m.threads[v]
+			t1.pop()
+			t2.pop()
+			m.threads[k] = t1
+			m.threads[v] = t2
+		}
+	}
+
+}
+
 func (m *machine) asyncAction(p syncPair, possiblePaths map[string]map[string]struct {
 	covered int
 	loc     string
@@ -717,10 +783,14 @@ func addVCs(m *machine, jsonFlag, plain, bench bool) []Item {
 	var items []Item
 	//chosenPartner := make(map[string]Item)
 	//chosenPartner := make(map[])
-	s3 := time.Now()
+	//	s3 := time.Now()
 	for {
+		//fmt.Println("goStarts:", m.getThreadStarts())
+		m.startAllthreads()
 		pairs := m.getSyncPairs()
+
 		pairs = append(pairs, m.getAsyncActions()...)
+
 		if len(pairs) == 0 {
 			break
 		}
@@ -851,20 +921,25 @@ func addVCs(m *machine, jsonFlag, plain, bench bool) []Item {
 	}
 	for _, t := range m.threads {
 		for {
-			if len(t.events) > 0 {
-				t.vc.Add(t.ID, 1)
-				t.events[0].vc = t.vc.clone()
-				items = append(items, t.peek())
-				t.pop()
-				m.threads[t.ID] = t
+			if len(t.events) > 0 && t.peek().ops[0].kind&WAIT == 0 {
+				if t.peek().ops[0].kind&SIG > 0 {
+					t.pop()
+					m.threads[t.ID] = t
+				} else {
+					t.vc.Add(t.ID, 1)
+					t.events[0].vc = t.vc.clone()
+					items = append(items, t.peek())
+					t.pop()
+					m.threads[t.ID] = t
+				}
 			} else {
 				break
 			}
 		}
 
 	}
-	fmt.Println("Prep2Time:", time.Since(s3))
-	fmt.Println(len(items))
+	//fmt.Println("Prep2Time:", time.Since(s3))
+	//	fmt.Println(len(items))
 	return items
 	// // for _, it := range items {
 	// // 	fmt.Println(it)
@@ -1117,7 +1192,6 @@ func findAlternatives(items []Item, plain, json, bench bool) {
 			tmp = append(tmp, &items[i])
 			cache[s] = tmp
 		}
-
 	}
 
 	usedMap := make(map[string]string)
@@ -1280,7 +1354,7 @@ func (n Node) String() string {
 
 func dgAnalysis(m *machine, jsonFlag, plain bool) []*Node {
 	var threadGraphs []*Node
-
+	//	dg1 := time.Now()
 	for _, t := range m.threads {
 		start := &Node{item: &t.events[0]}
 		curr := start
@@ -1291,35 +1365,36 @@ func dgAnalysis(m *machine, jsonFlag, plain bool) []*Node {
 		}
 		threadGraphs = append(threadGraphs, start)
 	}
-
-	for _, g := range threadGraphs {
-		curr := g
-		for {
-			fmt.Printf("(%v%v|%v)", curr.item.ops[0].ch, curr.item.ops[0].kind, curr.item.thread)
-			if len(curr.neighbours) > 0 {
-				fmt.Printf("->")
-				curr = curr.neighbours[0]
-			} else {
-				fmt.Printf("\n")
-				break
-			}
-		}
-	}
-
+	//	fmt.Println("Time threadgraphbuilder", time.Since(dg1))
 	//reader := bufio.NewReader(os.Stdin)
-
+	s := ""
 	copyGraph := append([]*Node{}, threadGraphs...)
+	suspended := 0
 	for {
 		done := 0
 		for _, g := range copyGraph {
 			if g == nil || len(g.neighbours) == 0 {
 				done++
 			}
+			//	fmt.Println(g)
 		}
+		q := fmt.Sprintf("%v, %v, %v", done, suspended, len(copyGraph))
+		if q != s {
+			fmt.Println(q, "\n")
+			s = q
+			for _, g := range copyGraph {
+				if g != nil {
+					fmt.Printf("%v-%v\n%v\n", g, len(g.neighbours), g.neighbours)
+				}
+
+			}
+			fmt.Printf("\n\n")
+		}
+
 		if done == len(copyGraph) {
 			break
 		}
-
+		suspended = 0
 		//find match
 		for i, g := range copyGraph {
 			if g == nil {
@@ -1328,13 +1403,13 @@ func dgAnalysis(m *machine, jsonFlag, plain bool) []*Node {
 			if g.item.ops[0].kind != PREPARE|RCV {
 				continue
 			}
-
+			found := false
 			for j, h := range copyGraph {
 				if h == nil {
 					continue
 				}
 
-				if h.item.ops[0].ch == g.item.ops[0].ch && h.item.ops[0].kind == PREPARE|SEND {
+				if h.item.ops[0].ch == g.item.ops[0].ch && h.item.ops[0].kind == PREPARE|SEND && len(g.neighbours) > 0 {
 					//look ahead the commit event of g
 					gCommit := g.neighbours[0]
 					if gCommit.item.partner == h.item.thread {
@@ -1355,34 +1430,37 @@ func dgAnalysis(m *machine, jsonFlag, plain bool) []*Node {
 						} else {
 							copyGraph[j] = nil
 						}
+						found = true
 						break
 					}
 
 				}
 			}
-
-			fmt.Println("---")
-		}
-	}
-
-	for _, g := range threadGraphs {
-		curr := g
-		for {
-			fmt.Printf("(%v%v|%v)", curr.item.ops[0].ch, curr.item.ops[0].kind, curr.item.thread)
-			for i := 1; i < len(curr.neighbours); i++ {
-				fmt.Printf("-%v>", curr.neighbours[i].item.thread)
-				fmt.Printf("(%v%v|%v)", curr.neighbours[i].item.ops[0].ch, curr.neighbours[i].item.ops[0].kind, curr.neighbours[i].item.thread)
-			}
-			if len(curr.neighbours) > 0 {
-				fmt.Printf("-%v>", curr.neighbours[0].item.thread)
-				curr = curr.neighbours[0]
-			} else {
-				fmt.Printf("\n")
-				break
+			if !found {
+				suspended++
 			}
 		}
 	}
 
+	if plain {
+		for _, g := range threadGraphs {
+			curr := g
+			for {
+				fmt.Printf("(%v%v|%v)", curr.item.ops[0].ch, curr.item.ops[0].kind, curr.item.thread)
+				for i := 1; i < len(curr.neighbours); i++ {
+					fmt.Printf("-%v>", curr.neighbours[i].item.thread)
+					fmt.Printf("(%v%v|%v)", curr.neighbours[i].item.ops[0].ch, curr.neighbours[i].item.ops[0].kind, curr.neighbours[i].item.thread)
+				}
+				if len(curr.neighbours) > 0 {
+					fmt.Printf("-%v>", curr.neighbours[0].item.thread)
+					curr = curr.neighbours[0]
+				} else {
+					fmt.Printf("\n")
+					break
+				}
+			}
+		}
+	}
 	return threadGraphs
 }
 
@@ -1414,8 +1492,9 @@ func contains(n *Node, s []*Node) bool {
 	return false
 }
 
-func findDGAlternatives(threadGraphs []*Node) {
+func findDGAlternatives(threadGraphs []*Node, plain bool) {
 	reachAb := make(map[*Node][]*Node)
+	//	dg1 := time.Now()
 	for _, g := range threadGraphs {
 		curr := g
 		for {
@@ -1431,9 +1510,12 @@ func findDGAlternatives(threadGraphs []*Node) {
 			}
 		}
 	}
-	for k, v := range reachAb {
-		fmt.Println("Reach for", k)
-		fmt.Println("\t", v)
+	//	fmt.Println("Reachability:", time.Since(dg1))
+	if plain {
+		for k, v := range reachAb {
+			fmt.Println("Reach for", k)
+			fmt.Println("\t", v)
+		}
 	}
 
 	alternatives := make(map[*Item][]*Item)
@@ -1458,13 +1540,16 @@ func findDGAlternatives(threadGraphs []*Node) {
 			}
 		}
 	}
-
-	for k, v := range alternatives {
-		if len(v) > 0 {
-			fmt.Println("Alternatives for", k)
-			fmt.Println("\t", v)
+	fmt.Println(">>>", len(alternatives))
+	if plain {
+		for k, v := range alternatives {
+			if len(v) > 0 {
+				fmt.Println("Alternatives for", k)
+				fmt.Println("\t", v)
+			}
 		}
 	}
+
 }
 
 type Result struct {
@@ -1503,12 +1588,12 @@ func main() {
 		color.HiYellow("-----------------------")
 	}
 
-	s1 := time.Now()
+	//	s1 := time.Now()
 	items := parseTrace(*trace)
-	fmt.Println("ParseTime:", time.Since(s1))
-	s2 := time.Now()
+	//	fmt.Println("ParseTime:", time.Since(s1))
+	//	s2 := time.Now()
 	threads := createThreads(items)
-	fmt.Println("Prep1Time:", time.Since(s2))
+	//	fmt.Println("Prep1Time:", time.Since(s2))
 	aChans := getAsyncChans(items)
 
 	// for _, x := range items {
@@ -1524,11 +1609,15 @@ func main() {
 	closed := make(map[string]struct{})
 	closed["0"] = struct{}{}
 	// simulate([]machine{machine{threads, aChans, closed, false}})
-	start := time.Now()
+	//start := time.Now()
 
+	// dg1 := time.Now()
 	// graph := dgAnalysis(&machine{threads, aChans, closed, make(map[string]VectorClock), false}, *json, *plain)
+	// fmt.Println("Time Graphbuild", time.Since(dg1))
 	// fmt.Println("****")
-	// findDGAlternatives(graph)
+	// dg2 := time.Now()
+	// findDGAlternatives(graph, *plain)
+	// fmt.Println("Time alternatives:", time.Since(dg2))
 	// fmt.Println("****")
 
 	res := addVCs(&machine{threads, aChans, closed, make(map[string]VectorClock), false}, *json, *plain, *bench)
@@ -1536,6 +1625,6 @@ func main() {
 	//findAlternatives2(res, *plain, *json, *bench)
 	findAlternatives(res, *plain, *json, *bench)
 
-	fmt.Println(time.Since(start))
+	//fmt.Println(time.Since(start))
 
 }
