@@ -465,6 +465,9 @@ func (m *machine) getThreadStarts() (ret map[string]string) {
 				partner = WAIT
 			}
 			for _, j := range m.threads {
+				if len(j.events) == 0 {
+					continue
+				}
 				for _, op2 := range j.peek().ops {
 					if op2.kind&partner > 0 && op.ch == op2.ch {
 						if op.kind&SIG > 0 {
@@ -911,11 +914,14 @@ func addVCs(m *machine, jsonFlag, plain, bench bool) []Item {
 				m.threads[t1.ID] = t1
 				m.threads[t2.ID] = t2
 			} else {
-				t1.vc.Add(t1.ID, 1)
-				t1.events[0].vc = t1.vc.clone()
-				items = append(items, t1.events[0])
-				t1.pop()
-				m.threads[p.t1] = t1
+				if len(t1.events) > 0 {
+					t1.vc.Add(t1.ID, 1)
+					t1.events[0].vc = t1.vc.clone()
+					items = append(items, t1.events[0])
+					t1.pop()
+					m.threads[p.t1] = t1
+				}
+
 			}
 		}
 	}

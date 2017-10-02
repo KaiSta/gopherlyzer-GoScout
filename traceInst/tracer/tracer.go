@@ -20,6 +20,7 @@ var chanID uint64
 var threadID uint64
 var watchDog chan struct{}
 var done chan struct{}
+var waitSigID uint64
 
 func init() {
 	chans = hashmap.NewCMapv2()
@@ -37,6 +38,10 @@ func GetGID() uint64 {
 	b = b[:bytes.IndexByte(b, ' ')]
 	n, _ := strconv.ParseUint(string(b), 10, 64)
 	return n
+}
+
+func GetWaitSigID() uint64 {
+	return atomic.AddUint64(&waitSigID, 1)
 }
 
 func informWatchDog() {
@@ -93,10 +98,30 @@ func RegisterChan(x interface{}, c int) {
 	chans.Store(addr, fmt.Sprintf("%v,%v", id, c))
 }
 
-func RegisterThread(s string) {
+func RegisterThread(s string, id uint64) {
 	thread := GetGID()
-	threads.Store(thread, fmt.Sprintf("%v%v", s, atomic.LoadUint64(&threadID)))
+	threadN := fmt.Sprintf("%v%v", s, atomic.LoadUint64(&threadID))
+	threads.Store(thread, threadN)
 	atomic.AddUint64(&threadID, 1)
+
+	traces.Store(thread, fmt.Sprintf("%v,[(%v,0,W,-)],C,-", threadN, id))
+	informWatchDog()
+}
+
+func AddSignal(id uint64) {
+	thread := GetGID()
+	threadID := "-"
+	vec2 := threads.Get(thread)
+	if vec2 != nil {
+		iter2 := vec2.Iterator()
+		for iter2.HasNext() {
+			threadID = iter2.Get()
+			iter2.Next()
+		}
+	}
+
+	traces.Store(thread, fmt.Sprintf("%v,[(%v,0,S,-)],C,-", threadID, id))
+	informWatchDog()
 }
 
 func SendPrep(x interface{}, s string) {
