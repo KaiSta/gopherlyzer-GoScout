@@ -128,7 +128,7 @@ func (p *ASTParser) handleAssign(assign *ast.AssignStmt, nBlockStmt *ast.BlockSt
 		}
 	}
 
-	if raceDetector && !isMake && assign.Tok != token.DEFINE {
+	if raceDetector && !isMake /*&& assign.Tok != token.DEFINE*/ {
 		sel := &ast.SelectorExpr{X: ast.NewIdent("tracer"), Sel: ast.NewIdent("WriteAcc")}
 		call := &ast.CallExpr{Fun: sel, Args: assign.Lhs}
 		nBlockStmt.List = append(nBlockStmt.List, &ast.ExprStmt{X: call})
@@ -221,9 +221,10 @@ func (p *ASTParser) race_handleBinaryExpr(x *ast.BinaryExpr, nBlockStmt *ast.Blo
 	case *ast.UnaryExpr:
 		p.race_handleUnaryExpr(v, nBlockStmt)
 	case *ast.Ident:
-		sel := &ast.SelectorExpr{X: ast.NewIdent("tracer"), Sel: ast.NewIdent("ReadAcc")}
-		call := &ast.CallExpr{Fun: sel, Args: []ast.Expr{v}}
-		nBlockStmt.List = append(nBlockStmt.List, &ast.ExprStmt{X: call})
+		/*	sel := &ast.SelectorExpr{X: ast.NewIdent("tracer"), Sel: ast.NewIdent("ReadAcc")}
+			call := &ast.CallExpr{Fun: sel, Args: []ast.Expr{v}}
+			nBlockStmt.List = append(nBlockStmt.List, &ast.ExprStmt{X: call}) */
+		nBlockStmt.List = append(nBlockStmt.List, &ast.ExprStmt{X: p.getReadAcc(v)})
 	}
 	switch v := x.Y.(type) {
 	case *ast.CallExpr:
@@ -233,9 +234,10 @@ func (p *ASTParser) race_handleBinaryExpr(x *ast.BinaryExpr, nBlockStmt *ast.Blo
 	case *ast.UnaryExpr:
 		p.race_handleUnaryExpr(v, nBlockStmt)
 	case *ast.Ident:
-		sel := &ast.SelectorExpr{X: ast.NewIdent("tracer"), Sel: ast.NewIdent("ReadAcc")}
+		/*sel := &ast.SelectorExpr{X: ast.NewIdent("tracer"), Sel: ast.NewIdent("ReadAcc")}
 		call := &ast.CallExpr{Fun: sel, Args: []ast.Expr{v}}
-		nBlockStmt.List = append(nBlockStmt.List, &ast.ExprStmt{X: call})
+		nBlockStmt.List = append(nBlockStmt.List, &ast.ExprStmt{X: call})*/
+		nBlockStmt.List = append(nBlockStmt.List, &ast.ExprStmt{X: p.getReadAcc(v)})
 	}
 }
 func (p *ASTParser) race_handleUnaryExpr(x *ast.UnaryExpr, nBlockStmt *ast.BlockStmt) {
@@ -247,11 +249,17 @@ func (p *ASTParser) race_handleUnaryExpr(x *ast.UnaryExpr, nBlockStmt *ast.Block
 	case *ast.UnaryExpr:
 		p.race_handleUnaryExpr(v, nBlockStmt)
 	case *ast.Ident:
-		sel := &ast.SelectorExpr{X: ast.NewIdent("tracer"), Sel: ast.NewIdent("ReadAcc")}
+		/*sel := &ast.SelectorExpr{X: ast.NewIdent("tracer"), Sel: ast.NewIdent("WriteAcc")}
 		call := &ast.CallExpr{Fun: sel, Args: []ast.Expr{v}}
-		nBlockStmt.List = append(nBlockStmt.List, &ast.ExprStmt{X: call})
+		nBlockStmt.List = append(nBlockStmt.List, &ast.ExprStmt{X: call})*/
+		nBlockStmt.List = append(nBlockStmt.List, &ast.ExprStmt{X: p.getWriteAcc(v)})
 	}
 }
+
+func (p *ASTParser) race_handleSendStmt(x *ast.SendStmt, nBlockStmt *ast.BlockStmt) {
+	nBlockStmt.List = append(nBlockStmt.List, &ast.ExprStmt{X: p.getReadAcc(x.Value)})
+}
+
 func (p *ASTParser) race_handleCallExpr(x *ast.CallExpr, nBlockStmt *ast.BlockStmt) {
 	for _, a := range x.Args {
 		switch v := a.(type) {
@@ -262,11 +270,27 @@ func (p *ASTParser) race_handleCallExpr(x *ast.CallExpr, nBlockStmt *ast.BlockSt
 		case *ast.UnaryExpr:
 			p.race_handleUnaryExpr(v, nBlockStmt)
 		case *ast.Ident:
-			sel := &ast.SelectorExpr{X: ast.NewIdent("tracer"), Sel: ast.NewIdent("ReadAcc")}
+			/*sel := &ast.SelectorExpr{X: ast.NewIdent("tracer"), Sel: ast.NewIdent("ReadAcc")}
 			call := &ast.CallExpr{Fun: sel, Args: []ast.Expr{v}}
-			nBlockStmt.List = append(nBlockStmt.List, &ast.ExprStmt{X: call})
+			nBlockStmt.List = append(nBlockStmt.List, &ast.ExprStmt{X: call})*/
+			nBlockStmt.List = append(nBlockStmt.List, &ast.ExprStmt{X: p.getReadAcc(v)})
 		}
 	}
+}
+
+func (p *ASTParser) race_handleIncDec(x ast.Expr, nBlockStmt *ast.BlockStmt) {
+	nBlockStmt.List = append(nBlockStmt.List, &ast.ExprStmt{X: p.getWriteAcc(x)})
+}
+
+func (p *ASTParser) getReadAcc(e ast.Expr) *ast.CallExpr {
+	sel := &ast.SelectorExpr{X: ast.NewIdent("tracer"), Sel: ast.NewIdent("ReadAcc")}
+	call := &ast.CallExpr{Fun: sel, Args: []ast.Expr{e}}
+	return call
+}
+func (p *ASTParser) getWriteAcc(e ast.Expr) *ast.CallExpr {
+	sel := &ast.SelectorExpr{X: ast.NewIdent("tracer"), Sel: ast.NewIdent("WriteAcc")}
+	call := &ast.CallExpr{Fun: sel, Args: []ast.Expr{e}}
+	return call
 }
 
 func (p *ASTParser) handleSendStmt(x *ast.SendStmt, nBlockStmt *ast.BlockStmt) {
@@ -430,6 +454,9 @@ func (p *ASTParser) handleBlockStmt(in *ast.BlockStmt) *ast.BlockStmt {
 		case *ast.ExprStmt: //check for unary expr which could contain a receive without assignment
 			switch y := x.X.(type) {
 			case *ast.UnaryExpr:
+				if raceDetector {
+					p.race_handleUnaryExpr(y, out)
+				}
 				if y.Op == token.ARROW { //rcv
 					p.handleRcvStmt(y, out)
 				}
@@ -441,12 +468,16 @@ func (p *ASTParser) handleBlockStmt(in *ast.BlockStmt) *ast.BlockStmt {
 				p.handleRegCalls(y, out)
 			//	out.List = append(out.List, x)
 			default:
+				fmt.Println(">>>", reflect.TypeOf(x.X), p.FSet.Position(x.X.Pos()).Line)
 				out.List = append(out.List, x)
 			}
 		case *ast.AssignStmt: //receive with assign, or channel creation
 			//	out.List = append(out.List, p.handleAssign(x, out))
 			p.handleAssign(x, out)
 		case *ast.SendStmt:
+			if raceDetector {
+				p.race_handleSendStmt(x, out)
+			}
 			p.handleSendStmt(x, out)
 		case *ast.IfStmt:
 			out.List = append(out.List, p.handleIfStmt(x))
@@ -530,7 +561,13 @@ func (p *ASTParser) handleBlockStmt(in *ast.BlockStmt) *ast.BlockStmt {
 					// }
 				}
 			}
+		case *ast.IncDecStmt:
+			if raceDetector {
+				p.race_handleIncDec(x.X, out)
+			}
+			out.List = append(out.List, x)
 		default:
+			fmt.Println(">>>", reflect.TypeOf(x), p.FSet.Position(x.Pos()).Line)
 			out.List = append(out.List, x)
 		}
 	}
