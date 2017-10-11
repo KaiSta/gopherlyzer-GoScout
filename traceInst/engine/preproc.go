@@ -98,6 +98,10 @@ func (p *ASTParser) convertParams(fun *ast.FuncDecl) {
 }
 
 func (p *ASTParser) handleAssign(assign *ast.AssignStmt, nBlockStmt *ast.BlockStmt) {
+	//if rhs is empty, then there is nothing todo here since there aren't any channels involved
+	if len(assign.Rhs) == 0 {
+		return
+	}
 	var isMake bool
 	if call := p.isChanMake(assign.Rhs[0]); call != nil {
 		var c *ast.ChanType
@@ -555,7 +559,13 @@ func (p *ASTParser) handleBlockStmt(in *ast.BlockStmt) *ast.BlockStmt {
 			case *ast.GenDecl:
 				if z, ok := y.Specs[0].(*ast.ValueSpec); ok {
 					//tmp := &ast.BlockStmt{}
-					p.handleAssign(&ast.AssignStmt{Lhs: []ast.Expr{z.Names[0]}, Rhs: []ast.Expr{z.Values[0]}, Tok: token.DEFINE}, out)
+					if len(z.Values) > 0 {
+						p.handleAssign(&ast.AssignStmt{Lhs: []ast.Expr{z.Names[0]}, Rhs: []ast.Expr{z.Values[0]}, Tok: token.DEFINE}, out)
+					} else {
+						out.List = append(out.List, x)
+						p.handleAssign(&ast.AssignStmt{Lhs: []ast.Expr{z.Names[0]}, Rhs: []ast.Expr{}, Tok: token.DEFINE}, out)
+					}
+
 					// for _, e := range tmp.List {
 					// 	fmt.Println(e, reflect.TypeOf(e))
 					// }

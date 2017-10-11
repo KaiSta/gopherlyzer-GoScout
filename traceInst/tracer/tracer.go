@@ -124,6 +124,59 @@ func AddSignal(id uint64) {
 	informWatchDog()
 }
 
+func WriteAcc(x interface{}, s string) {
+	thread := GetGID()
+	var name string
+
+	if x != nil {
+		v := reflect.ValueOf(x)
+		addr := uint64(v.Pointer())
+		name = fmt.Sprint(addr)
+	} else {
+		name = "nil"
+	}
+
+	threadID := "-"
+	vec2 := threads.Get(thread)
+	if vec2 != nil {
+		iter2 := vec2.Iterator()
+		for iter2.HasNext() {
+			threadID = iter2.Get()
+			iter2.Next()
+		}
+	}
+
+	traces.Store(thread, fmt.Sprintf("%v,[(%v,%v,%v)],%v,%v", threadID, name, "W", s, "C", "-"))
+
+	informWatchDog()
+}
+func ReadAcc(x interface{}, s string) {
+	thread := GetGID()
+	var name string
+
+	if x != nil {
+		v := reflect.ValueOf(x)
+		addr := uint64(v.Pointer())
+		name = fmt.Sprint(addr)
+	} else {
+		name = "nil"
+	}
+
+	threadID := "-"
+	vec2 := threads.Get(thread)
+	if vec2 != nil {
+		iter2 := vec2.Iterator()
+		for iter2.HasNext() {
+			threadID = iter2.Get()
+			iter2.Next()
+		}
+	}
+
+	traces.Store(thread, fmt.Sprintf("%v,[(%v,%v,%v)],%v,%v", threadID, name, "R", s, "C", "-"))
+
+	informWatchDog()
+}
+
 func SendPrep(x interface{}, s string) {
 	thread := GetGID()
 	var chanID string
