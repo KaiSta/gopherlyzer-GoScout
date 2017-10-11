@@ -146,7 +146,7 @@ func WriteAcc(x interface{}, s string) {
 		}
 	}
 
-	traces.Store(thread, fmt.Sprintf("%v,[(%v,%v,%v)],%v,%v", threadID, name, "W", s, "C", "-"))
+	traces.Store(thread, fmt.Sprintf("%v,[(%v,%v,%v)],%v,%v", threadID, name, "M", s, "C", "-"))
 
 	informWatchDog()
 }
