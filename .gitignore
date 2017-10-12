@@ -17,3 +17,7 @@ traceInst/tests/
 traceInst/results/
 traceVerify/tests/
 tmp/
+.vscode/launch.json
+traceInst/.vs/slnx.sqlite
+traceInst/packageproblem.txt
+traceVerify/.vscode/launch.json

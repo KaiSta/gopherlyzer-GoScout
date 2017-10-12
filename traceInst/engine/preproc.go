@@ -133,9 +133,10 @@ func (p *ASTParser) handleAssign(assign *ast.AssignStmt, nBlockStmt *ast.BlockSt
 	}
 
 	if raceDetector && !isMake /*&& assign.Tok != token.DEFINE*/ {
-		sel := &ast.SelectorExpr{X: ast.NewIdent("tracer"), Sel: ast.NewIdent("WriteAcc")}
-		call := &ast.CallExpr{Fun: sel, Args: assign.Lhs}
-		nBlockStmt.List = append(nBlockStmt.List, &ast.ExprStmt{X: call})
+		// sel := &ast.SelectorExpr{X: ast.NewIdent("tracer"), Sel: ast.NewIdent("WriteAcc")}
+		// call := &ast.CallExpr{Fun: sel, Args: assign.Lhs}
+		tmp := p.getWriteAcc(assign.Lhs[0])
+		nBlockStmt.List = append(nBlockStmt.List, &ast.ExprStmt{X: tmp})
 	}
 
 	if raceDetector && !isMake {
@@ -287,13 +288,28 @@ func (p *ASTParser) race_handleIncDec(x ast.Expr, nBlockStmt *ast.BlockStmt) {
 }
 
 func (p *ASTParser) getReadAcc(e ast.Expr) *ast.CallExpr {
+	tmp := p.FSet.Position(e.Pos())
+	q, r := filepath.Abs(tmp.Filename)
+	if r != nil {
+		panic(r)
+	}
+	b := &ast.BasicLit{Kind: token.STRING, Value: fmt.Sprintf("\"%v:%v\"", p.escapeSlashes(q), tmp.Line)}
+
 	sel := &ast.SelectorExpr{X: ast.NewIdent("tracer"), Sel: ast.NewIdent("ReadAcc")}
-	call := &ast.CallExpr{Fun: sel, Args: []ast.Expr{e}}
+	call := &ast.CallExpr{Fun: sel, Args: []ast.Expr{e, b}}
 	return call
 }
 func (p *ASTParser) getWriteAcc(e ast.Expr) *ast.CallExpr {
+	fmt.Println("!!!!")
+	tmp := p.FSet.Position(e.Pos())
+	q, r := filepath.Abs(tmp.Filename)
+	if r != nil {
+		panic(r)
+	}
+	fmt.Println("..", tmp)
+	b := &ast.BasicLit{Kind: token.STRING, Value: fmt.Sprintf("\"%v:%v\"", p.escapeSlashes(q), tmp.Line)}
 	sel := &ast.SelectorExpr{X: ast.NewIdent("tracer"), Sel: ast.NewIdent("WriteAcc")}
-	call := &ast.CallExpr{Fun: sel, Args: []ast.Expr{e}}
+	call := &ast.CallExpr{Fun: sel, Args: []ast.Expr{e, b}}
 	return call
 }
 
