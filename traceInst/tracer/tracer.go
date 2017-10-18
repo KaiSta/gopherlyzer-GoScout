@@ -7,15 +7,21 @@ import (
 	"reflect"
 	"runtime"
 	"strconv"
+	"sync"
 	"sync/atomic"
 	"time"
 
-	"../cmap"
+	"../vector"
 )
 
-var chans *hashmap.CMapv2
-var traces *hashmap.CMapv2
-var threads *hashmap.CMapv2
+//var chans *hashmap.CMapv2
+var chans sync.Map
+
+//var traces *hashmap.CMapv2
+var traces sync.Map
+
+//var threads *hashmap.CMapv2
+var threads sync.Map
 var chanID uint64
 var threadID uint64
 var watchDog chan struct{}
@@ -23,10 +29,15 @@ var done chan struct{}
 var waitSigID uint64
 
 func init() {
-	chans = hashmap.NewCMapv2()
-	traces = hashmap.NewCMapv2()
-	threads = hashmap.NewCMapv2()
-	threads.Store(1, "main")
+	//chans = hashmap.NewCMapv2()
+	chans = sync.Map{}
+	//traces = hashmap.NewCMapv2()
+	traces = sync.Map{}
+	//threads = hashmap.NewCMapv2()
+	threads = sync.Map{}
+	vec := vector.NewCVector()
+	vec.Push_Back("main")
+	threads.Store(uint64(1), vec)
 	watchDog = make(chan struct{})
 	done = make(chan struct{})
 }
@@ -48,6 +59,35 @@ func informWatchDog() {
 	go func() {
 		watchDog <- struct{}{}
 	}()
+}
+
+func storeInTraces(thread uint64, values ...string) {
+	vec, _ := traces.Load(thread)
+	if vec == nil {
+		vec = vector.NewCVector()
+	}
+	for _, n := range values {
+		vec.(*vector.CVector).Push_Back(n)
+	}
+	traces.Store(thread, vec)
+}
+
+func getThreadName(thread uint64) string {
+	threadID := "-"
+	vec, ok := threads.Load(thread)
+
+	if !ok {
+		panic("something bad")
+	}
+
+	if vec != nil {
+		iter2 := vec.(*vector.CVector).Iterator()
+		for iter2.HasNext() {
+			threadID = iter2.Get()
+			iter2.Next()
+		}
+	}
+	return threadID
 }
 
 func Start() {
@@ -79,48 +119,64 @@ func writeBack() {
 	if err != nil {
 		panic(err)
 	}
-	iter := traces.Iterator()
-	for iter.HasNext() {
-		iter2 := iter.Get()
-		for iter2.HasNext() {
-			f.WriteString(iter2.Get() + "\n")
 
-			iter2.Next()
+	traces.Range(func(key, value interface{}) bool {
+		vec := value.(*vector.CVector)
+		iter := vec.Iterator()
+		for iter.HasNext() {
+			f.WriteString(iter.Get() + "\n")
+			iter.Next()
 		}
-		iter.Next()
-	}
+		return true
+	})
+
+	// iter := traces.Iterator()
+	// for iter.HasNext() {
+	// 	iter2 := iter.Get()
+	// 	for iter2.HasNext() {
+	// 		f.WriteString(iter2.Get() + "\n")
+
+	// 		iter2.Next()
+	// 	}
+	// 	iter.Next()
+	// }
 }
 
 func RegisterChan(x interface{}, c int) {
 	v := reflect.ValueOf(x)
 	addr := uint64(v.Pointer())
 	id := atomic.AddUint64(&chanID, 1)
-	chans.Store(addr, fmt.Sprintf("%v,%v", id, c))
+
+	vec := vector.NewCVector()
+	vec.Push_Back(fmt.Sprintf("%v,%v", id, c))
+	chans.Store(addr, vec)
+	//chans.Store(addr, fmt.Sprintf("%v,%v", id, c))
 }
 
 func RegisterThread(s string, id uint64) {
 	thread := GetGID()
 	threadN := fmt.Sprintf("%v%v", s, atomic.LoadUint64(&threadID))
-	threads.Store(thread, threadN)
+
+	vec, _ := threads.Load(thread)
+	if vec == nil {
+		vec = vector.NewCVector()
+	}
+	vec.(*vector.CVector).Push_Back(threadN)
+	threads.Store(thread, vec)
+
 	atomic.AddUint64(&threadID, 1)
 
-	traces.Store(thread, fmt.Sprintf("%v,[(%v,0,W,-)],C,-", threadN, id))
+	storeInTraces(thread, fmt.Sprintf("%v,[(%v,0,W,-)],C,-", threadN, id))
+
 	informWatchDog()
 }
 
 func AddSignal(id uint64) {
 	thread := GetGID()
-	threadID := "-"
-	vec2 := threads.Get(thread)
-	if vec2 != nil {
-		iter2 := vec2.Iterator()
-		for iter2.HasNext() {
-			threadID = iter2.Get()
-			iter2.Next()
-		}
-	}
+	threadID := getThreadName(thread)
 
-	traces.Store(thread, fmt.Sprintf("%v,[(%v,0,S,-)],C,-", threadID, id))
+	storeInTraces(thread, fmt.Sprintf("%v,[(%v,0,S,-)],C,-", threadID, id))
+
 	informWatchDog()
 }
 
@@ -136,17 +192,9 @@ func WriteAcc(x interface{}, s string) {
 		name = "nil"
 	}
 
-	threadID := "-"
-	vec2 := threads.Get(thread)
-	if vec2 != nil {
-		iter2 := vec2.Iterator()
-		for iter2.HasNext() {
-			threadID = iter2.Get()
-			iter2.Next()
-		}
-	}
+	threadID := getThreadName(thread)
 
-	traces.Store(thread, fmt.Sprintf("%v,[(%v,%v,%v)],%v,%v", threadID, name, "M", s, "C", "-"))
+	storeInTraces(thread, fmt.Sprintf("%v,[(%v,0,%v,%v)],%v,%v", threadID, name, "M", s, "C", "-"))
 
 	informWatchDog()
 }
@@ -162,18 +210,77 @@ func ReadAcc(x interface{}, s string) {
 		name = "nil"
 	}
 
-	threadID := "-"
-	vec2 := threads.Get(thread)
-	if vec2 != nil {
-		iter2 := vec2.Iterator()
-		for iter2.HasNext() {
-			threadID = iter2.Get()
-			iter2.Next()
-		}
+	threadID := getThreadName(thread)
+
+	storeInTraces(thread, fmt.Sprintf("%v,[(%v,0,%v,%v)],%v,%v", threadID, name, "R", s, "C", "-"))
+
+	informWatchDog()
+}
+
+func PreLock(m interface{}, s string) {
+	thread := GetGID()
+	var name string
+
+	if m != nil {
+		v := reflect.ValueOf(m)
+		addr := uint64(v.Pointer())
+		name = fmt.Sprint(addr)
+	} else {
+		name = "nil"
 	}
 
-	traces.Store(thread, fmt.Sprintf("%v,[(%v,%v,%v)],%v,%v", threadID, name, "R", s, "C", "-"))
+	threadID := getThreadName(thread)
 
+	storeInTraces(thread, fmt.Sprintf("%v,[(%v,0,%v,%v)],%v,%v", threadID, name, "+", s, "P", "-"))
+
+	informWatchDog()
+}
+func PostLock(m interface{}, s string) {
+	thread := GetGID()
+	var name string
+
+	if m != nil {
+		v := reflect.ValueOf(m)
+		addr := uint64(v.Pointer())
+		name = fmt.Sprint(addr)
+	} else {
+		name = "nil"
+	}
+
+	threadID := getThreadName(thread)
+
+	storeInTraces(thread, fmt.Sprintf("%v,[(%v,0,%v,%v)],%v,%v", name, name, "-", s, "P", "-"),
+		fmt.Sprintf("%v,[(%v,0,%v,%v)],%v,%v", threadID, name, "+", s, "C", "-"),
+		fmt.Sprintf("%v,[(%v,0,%v,%v)],%v,%v", name, name, "-", s, "C", threadID))
+
+	// traces.Store(thread, fmt.Sprintf("%v,[(%v,0,%v,%v)],%v,%v", name, name, "-", s, "P", "-"))
+	// traces.Store(thread, fmt.Sprintf("%v,[(%v,0,%v,%v)],%v,%v", threadID, name, "+", s, "C", "-"))
+	// traces.Store(thread, fmt.Sprintf("%v,[(%v,0,%v,%v)],%v,%v", name, name, "-", s, "C", threadID))
+	informWatchDog()
+}
+func PostUnlock(m interface{}, s string) {
+	thread := GetGID()
+	var name string
+
+	if m != nil {
+		v := reflect.ValueOf(m)
+		addr := uint64(v.Pointer())
+		name = fmt.Sprint(addr)
+	} else {
+		name = "nil"
+	}
+
+	threadID := getThreadName(thread)
+
+	storeInTraces(thread, fmt.Sprintf("%v,[(%v,0,%v,%v)],%v,%v", threadID, name, "#", s, "P", "-"),
+		fmt.Sprintf("%v,[(%v,0,%v,%v)],%v,%v", name, name, "*", s, "P", "-"),
+		fmt.Sprintf("%v,[(%v,0,%v,%v)],%v,%v", threadID, name, "#", s, "C", "-"),
+		fmt.Sprintf("%v,[(%v,0,%v,%v)],%v,%v", name, name, "*", s, "C", threadID))
+
+	// traces.Store(thread, fmt.Sprintf("%v,[(%v,0,%v,%v)],%v,%v", threadID, name, "#", s, "P", "-"))
+	// traces.Store(thread, fmt.Sprintf("%v,[(%v,0,%v,%v)],%v,%v", name, name, "*", s, "P", "-"))
+	// traces.Store(thread, fmt.Sprintf("%v,[(%v,0,%v,%v)],%v,%v", threadID, name, "#", s, "C", "-"))
+	// traces.Store(thread, fmt.Sprintf("%v,[(%v,0,%v,%v)],%v,%v", name, name, "*", s, "C", threadID))
 	informWatchDog()
 }
 
@@ -184,9 +291,12 @@ func SendPrep(x interface{}, s string) {
 	if x != nil {
 		v := reflect.ValueOf(x)
 		addr := uint64(v.Pointer())
-		vec := chans.Get(addr)
-
-		iter := vec.Iterator()
+		//vec := chans.Get(addr)
+		vec, ok := chans.Load(addr)
+		if !ok {
+			panic("Housten, we have a problem")
+		}
+		iter := vec.(*vector.CVector).Iterator()
 		for iter.HasNext() {
 			chanID = iter.Get()
 			iter.Next()
@@ -195,18 +305,12 @@ func SendPrep(x interface{}, s string) {
 		chanID = "0,0"
 	}
 
-	threadID := "-"
-	vec2 := threads.Get(thread)
-	if vec2 != nil {
-		iter2 := vec2.Iterator()
-		for iter2.HasNext() {
-			threadID = iter2.Get()
-			iter2.Next()
-		}
-	}
+	threadID := getThreadName(thread)
+
+	storeInTraces(thread, fmt.Sprintf("%v,[(%v,%v,%v)],%v,%v", threadID, chanID, "!", s, "P", "-"))
 
 	//threadid,chanid,op,location,status,partner
-	traces.Store(thread, fmt.Sprintf("%v,[(%v,%v,%v)],%v,%v", threadID, chanID, "!", s, "P", "-"))
+	//traces.Store(thread, fmt.Sprintf("%v,[(%v,%v,%v)],%v,%v", threadID, chanID, "!", s, "P", "-"))
 
 	informWatchDog()
 }
@@ -218,9 +322,12 @@ func SendCommit(x interface{}, s string) {
 	if x != nil {
 		v := reflect.ValueOf(x)
 		addr := uint64(v.Pointer())
-		vec := chans.Get(addr)
-
-		iter := vec.Iterator()
+		//		vec := chans.Get(addr)
+		vec, ok := chans.Load(addr)
+		if !ok {
+			panic("Housten, we have a problem")
+		}
+		iter := vec.(*vector.CVector).Iterator()
 		for iter.HasNext() {
 			chanID = iter.Get()
 			iter.Next()
@@ -229,17 +336,12 @@ func SendCommit(x interface{}, s string) {
 		chanID = "0,0"
 	}
 
-	threadID := "-"
-	vec2 := threads.Get(thread)
-	if vec2 != nil {
-		iter2 := vec2.Iterator()
-		for iter2.HasNext() {
-			threadID = iter2.Get()
-			iter2.Next()
-		}
-	}
+	threadID := getThreadName(thread)
+
+	storeInTraces(thread, fmt.Sprintf("%v,[(%v,%v,%v)],%v,%v", threadID, chanID, "!", s, "C", "-"))
+
 	//threadid,chanid,op,location,status,partner
-	traces.Store(thread, fmt.Sprintf("%v,[(%v,%v,%v)],%v,%v", threadID, chanID, "!", s, "C", "-"))
+	//	traces.Store(thread, fmt.Sprintf("%v,[(%v,%v,%v)],%v,%v", threadID, chanID, "!", s, "C", "-"))
 
 	informWatchDog()
 }
@@ -251,9 +353,15 @@ func RcvPrep(x interface{}, s string) {
 	if x != nil {
 		v := reflect.ValueOf(x)
 		addr := uint64(v.Pointer())
-		vec := chans.Get(addr)
+		// vec := chans.Get(addr)
 
-		iter := vec.Iterator()
+		// iter := vec.Iterator()
+		vec, ok := chans.Load(addr)
+		if !ok {
+			panic("Housten, we have a problem")
+		}
+		iter := vec.(*vector.CVector).Iterator()
+
 		for iter.HasNext() {
 			chanID = iter.Get()
 			iter.Next()
@@ -262,18 +370,12 @@ func RcvPrep(x interface{}, s string) {
 		chanID = "0,0"
 	}
 
-	threadID := "-"
-	vec2 := threads.Get(thread)
-	if vec2 != nil {
-		iter2 := vec2.Iterator()
-		for iter2.HasNext() {
-			threadID = iter2.Get()
-			iter2.Next()
-		}
-	}
+	threadID := getThreadName(thread)
+
+	storeInTraces(thread, fmt.Sprintf("%v,[(%v,%v,%v)],%v,%v", threadID, chanID, "?", s, "P", "-"))
 
 	//threadid,chanid,op,location,status,partner
-	traces.Store(thread, fmt.Sprintf("%v,[(%v,%v,%v)],%v,%v", threadID, chanID, "?", s, "P", "-"))
+	//	traces.Store(thread, fmt.Sprintf("%v,[(%v,%v,%v)],%v,%v", threadID, chanID, "?", s, "P", "-"))
 
 	informWatchDog()
 }
@@ -285,9 +387,16 @@ func RcvCommit(x interface{}, s string, p uint64) {
 	if x != nil {
 		v := reflect.ValueOf(x)
 		addr := uint64(v.Pointer())
-		vec := chans.Get(addr)
+		// vec := chans.Get(addr)
 
-		iter := vec.Iterator()
+		// iter := vec.Iterator()
+
+		vec, ok := chans.Load(addr)
+		if !ok {
+			panic("Housten, we have a problem")
+		}
+		iter := vec.(*vector.CVector).Iterator()
+
 		for iter.HasNext() {
 			chanID = iter.Get()
 			iter.Next()
@@ -296,27 +405,14 @@ func RcvCommit(x interface{}, s string, p uint64) {
 		chanID = "0,0"
 	}
 
-	threadID := "-"
-	vec2 := threads.Get(thread)
-	if vec2 != nil {
-		iter2 := vec2.Iterator()
-		for iter2.HasNext() {
-			threadID = iter2.Get()
-			iter2.Next()
-		}
-	}
+	threadID := getThreadName(thread)
 
-	pID := "-"
-	vec3 := threads.Get(p)
-	if vec3 != nil {
-		iter2 := vec3.Iterator()
-		for iter2.HasNext() {
-			pID = iter2.Get()
-			iter2.Next()
-		}
-	}
+	pID := getThreadName(p)
+
 	//threadid,chanid,op,location,status,partner
-	traces.Store(thread, fmt.Sprintf("%v,[(%v,%v,%v)],%v,%v", threadID, chanID, "?", s, "C", pID))
+	storeInTraces(thread, fmt.Sprintf("%v,[(%v,%v,%v)],%v,%v", threadID, chanID, "?", s, "C", pID))
+
+	//traces.Store(thread, fmt.Sprintf("%v,[(%v,%v,%v)],%v,%v", threadID, chanID, "?", s, "C", pID))
 
 	informWatchDog()
 }
@@ -346,9 +442,14 @@ func SelectPrep(evs ...SelectEv) {
 		if x.X != nil {
 			v := reflect.ValueOf(x.X)
 			addr := uint64(v.Pointer())
-			vec := chans.Get(addr)
+			// vec := chans.Get(addr)
 
-			iter := vec.Iterator()
+			// iter := vec.Iterator()
+			vec, ok := chans.Load(addr)
+			if !ok {
+				panic("Housten, we have a problem")
+			}
+			iter := vec.(*vector.CVector).Iterator()
 			for iter.HasNext() {
 				chanID = iter.Get()
 				iter.Next()
@@ -362,19 +463,12 @@ func SelectPrep(evs ...SelectEv) {
 			chanevs += ","
 		}
 	}
-	threadID := "-"
-	vec2 := threads.Get(thread)
-	if vec2 != nil {
-		iter2 := vec2.Iterator()
-		for iter2.HasNext() {
-			threadID = iter2.Get()
-			iter2.Next()
-		}
-	}
+	threadID := getThreadName(thread)
 
 	//threadid,chanops,status,partner
-	traces.Store(thread, fmt.Sprintf("%v,[%v],%v,%v", threadID, chanevs, "P", 0))
+	storeInTraces(thread, fmt.Sprintf("%v,[%v],%v,%v", threadID, chanevs, "P", 0))
 
+	//traces.Store(thread, fmt.Sprintf("%v,[%v],%v,%v", threadID, chanevs, "P", 0))
 	informWatchDog()
 }
 
@@ -385,9 +479,15 @@ func ClosePrep(x interface{}, s string) {
 	if x != nil {
 		v := reflect.ValueOf(x)
 		addr := uint64(v.Pointer())
-		vec := chans.Get(addr)
 
-		iter := vec.Iterator()
+		vec, ok := chans.Load(addr)
+		if !ok {
+			panic("Housten, we have a problem")
+		}
+		iter := vec.(*vector.CVector).Iterator()
+		// vec := chans.Get(addr)
+
+		// iter := vec.Iterator()
 		for iter.HasNext() {
 			chanID = iter.Get()
 			iter.Next()
@@ -396,18 +496,12 @@ func ClosePrep(x interface{}, s string) {
 		chanID = "0,0"
 	}
 
-	threadID := "-"
-	vec2 := threads.Get(thread)
-	if vec2 != nil {
-		iter2 := vec2.Iterator()
-		for iter2.HasNext() {
-			threadID = iter2.Get()
-			iter2.Next()
-		}
-	}
+	threadID := getThreadName(thread)
+
+	storeInTraces(thread, fmt.Sprintf("%v,[(%v,%v,%v)],%v,%v", threadID, chanID, "0", s, "P", "-"))
 
 	//threadid,chanid,op,location,status,partner
-	traces.Store(thread, fmt.Sprintf("%v,[(%v,%v,%v)],%v,%v", threadID, chanID, "#", s, "P", "-"))
+	//	traces.Store(thread, fmt.Sprintf("%v,[(%v,%v,%v)],%v,%v", threadID, chanID, "#", s, "P", "-"))
 
 	informWatchDog()
 }
@@ -418,9 +512,14 @@ func CloseCommit(x interface{}, s string) {
 	if x != nil {
 		v := reflect.ValueOf(x)
 		addr := uint64(v.Pointer())
-		vec := chans.Get(addr)
+		vec, ok := chans.Load(addr)
+		if !ok {
+			panic("Housten, we have a problem")
+		}
+		iter := vec.(*vector.CVector).Iterator()
+		// vec := chans.Get(addr)
 
-		iter := vec.Iterator()
+		// iter := vec.Iterator()
 		for iter.HasNext() {
 			chanID = iter.Get()
 			iter.Next()
@@ -429,18 +528,12 @@ func CloseCommit(x interface{}, s string) {
 		chanID = "0,0"
 	}
 
-	threadID := "-"
-	vec2 := threads.Get(thread)
-	if vec2 != nil {
-		iter2 := vec2.Iterator()
-		for iter2.HasNext() {
-			threadID = iter2.Get()
-			iter2.Next()
-		}
-	}
+	threadID := getThreadName(thread)
+
+	storeInTraces(thread, fmt.Sprintf("%v,[(%v,%v,%v)],%v,%v", threadID, chanID, "0", s, "C", "-"))
 
 	//threadid,chanid,op,location,status,partner
-	traces.Store(thread, fmt.Sprintf("%v,[(%v,%v,%v)],%v,%v", threadID, chanID, "#", s, "C", "-"))
+	//traces.Store(thread, fmt.Sprintf("%v,[(%v,%v,%v)],%v,%v", threadID, chanID, "#", s, "C", "-"))
 
 	informWatchDog()
 }
