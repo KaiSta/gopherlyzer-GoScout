@@ -21,3 +21,5 @@ tmp/
 traceInst/.vs/slnx.sqlite
 traceInst/packageproblem.txt
 traceVerify/.vscode/launch.json
+traceInst/.vscode/launch.json
+traceInst/debug

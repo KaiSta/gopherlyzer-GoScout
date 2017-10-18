@@ -607,7 +607,8 @@ func (p *ASTParser) handleRegCalls(c *ast.CallExpr, nBlockStmt *ast.BlockStmt) {
 			p.handleRcvStmt(arg.(*ast.UnaryExpr), nBlock)
 
 			nBlockStmt.List = append(nBlockStmt.List, nBlock.List...)
-			c.Args[i] = nBlock.List[1].(*ast.AssignStmt).Lhs[0]
+			sel := &ast.SelectorExpr{X: nBlock.List[1].(*ast.AssignStmt).Lhs[0], Sel: ast.NewIdent("value")}
+			c.Args[i] = sel
 		}
 	}
 	nBlockStmt.List = append(nBlockStmt.List, &ast.ExprStmt{X: c})
