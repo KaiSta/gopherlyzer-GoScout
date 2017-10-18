@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -1180,7 +1181,7 @@ func addVCs(m *machine, jsonFlag, plain, bench bool) []Item {
 	// }
 }
 
-func findAlternatives(items []Item, plain, json, bench bool) {
+func findAlternatives(items []Item, plain, jsonFlag, bench bool) {
 	s4 := time.Now()
 	cache := make(map[struct {
 		ch string
@@ -1278,7 +1279,27 @@ func findAlternatives(items []Item, plain, json, bench bool) {
 	}
 	fmt.Println("AlternativeSearchTime:", time.Since(s4))
 
-	if bench || json {
+	if jsonFlag {
+		var jsonOut []Alternative
+		for _, x := range alternatives {
+			alt := Alternative{Op: x.Op.ShortString(), Used: make([]string, 0), Unused: make([]string, 0)}
+			for i := range x.Unused {
+				alt.Unused = append(alt.Unused, x.Unused[i].ShortString())
+			}
+			for i := range x.Used {
+				alt.Used = append(alt.Used, x.Used[i].ShortString())
+			}
+			jsonOut = append(jsonOut, alt)
+		}
+
+		res, err := json.Marshal(jsonOut)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println(string(res))
+	}
+
+	if bench {
 		return
 	}
 
