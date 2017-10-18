@@ -899,7 +899,12 @@ func addVCs(m *machine, jsonFlag, plain, bench bool) []Item {
 				t1.vc.sync(t2.vc)
 				t2.vc.sync(t1.vc)
 				t1.events[1].vc = t1.vc.clone()
-				t2.events[1].vc = t2.vc.clone()
+
+				//quickfix: a receiver states that he received something from a thread for which the necessary prepare message is there but
+				// not the commit message. This is a bug from the tracer which somehow loses the commit messages.
+				if len(t2.events) > 1 {
+					t2.events[1].vc = t2.vc.clone()
+				}
 
 				//	chosenPartner[t1.events[0].ShortString()] = t2.peek()
 				//	chosenPartner[t2.events[0].ShortString()] = t1.peek()
@@ -907,7 +912,11 @@ func addVCs(m *machine, jsonFlag, plain, bench bool) []Item {
 				items = append(items, t1.events[0])
 				items = append(items, t1.events[1])
 				items = append(items, t2.events[0])
-				items = append(items, t2.events[1])
+
+				if len(t2.events) > 1 {
+					items = append(items, t2.events[1])
+				}
+
 				t1.pop()
 				t1.pop()
 				t2.pop()
