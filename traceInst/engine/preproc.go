@@ -526,24 +526,26 @@ func (p *ASTParser) handleBlockStmt(in *ast.BlockStmt) *ast.BlockStmt {
 			if id, ok := x.Call.Fun.(*ast.Ident); ok {
 				funName = fmt.Sprintf("\"%v%v\"", id.Name, p.funID)
 				p.funID++
-				if funDec, ok := id.Obj.Decl.(*ast.FuncDecl); ok {
-					if funDec.Type.Params != nil {
-						//list = funDec.Type.Params.List
-						for i, f := range funDec.Type.Params.List {
-							var nf *ast.Field
-							if n, ok := x.Call.Args[i].(*ast.Ident); ok {
-								nf = &ast.Field{Type: f.Type, Names: []*ast.Ident{n}}
-							} else if _, ok := x.Call.Args[i].(*ast.BasicLit); ok {
-								//fmt.Println("tada!!", f.Type, f.Names)
-								if len(f.Names) > 0 {
-									nf = &ast.Field{Type: f.Type, Names: f.Names}
+				if id.Obj != nil {
+					if funDec, ok := id.Obj.Decl.(*ast.FuncDecl); ok {
+						if funDec.Type.Params != nil {
+							//list = funDec.Type.Params.List
+							for i, f := range funDec.Type.Params.List {
+								var nf *ast.Field
+								if n, ok := x.Call.Args[i].(*ast.Ident); ok {
+									nf = &ast.Field{Type: f.Type, Names: []*ast.Ident{n}}
+								} else if _, ok := x.Call.Args[i].(*ast.BasicLit); ok {
+									//fmt.Println("tada!!", f.Type, f.Names)
+									if len(f.Names) > 0 {
+										nf = &ast.Field{Type: f.Type, Names: f.Names}
+									} else {
+										nf = &ast.Field{Type: f.Type}
+									}
 								} else {
-									nf = &ast.Field{Type: f.Type}
+									nf = &ast.Field{Type: f.Type, Names: f.Names}
 								}
-							} else {
-								nf = &ast.Field{Type: f.Type, Names: f.Names}
+								list = append(list, nf)
 							}
-							list = append(list, nf)
 						}
 					}
 				}
