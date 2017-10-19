@@ -484,8 +484,11 @@ func (p *ASTParser) handleBlockStmt(in *ast.BlockStmt) *ast.BlockStmt {
 				if raceDetector {
 					p.race_handleCallExpr(y, out)
 				}
-				p.handleClose(y, out)
-				p.handleRegCalls(y, out)
+				handled := p.handleClose(y, out)
+				handled += p.handleRegCalls(y, out)
+				if handled == 0 {
+					out.List = append(out.List, x)
+				}
 			//	out.List = append(out.List, x)
 			default:
 				fmt.Println(">>>", reflect.TypeOf(x.X), p.FSet.Position(x.X.Pos()).Line)
@@ -602,7 +605,8 @@ func (p *ASTParser) handleBlockStmt(in *ast.BlockStmt) *ast.BlockStmt {
 	return out
 }
 
-func (p *ASTParser) handleRegCalls(c *ast.CallExpr, nBlockStmt *ast.BlockStmt) {
+func (p *ASTParser) handleRegCalls(c *ast.CallExpr, nBlockStmt *ast.BlockStmt) int {
+
 	for i, arg := range c.Args {
 		if p.isRcv(arg) {
 			nBlock := &ast.BlockStmt{}
@@ -611,8 +615,10 @@ func (p *ASTParser) handleRegCalls(c *ast.CallExpr, nBlockStmt *ast.BlockStmt) {
 			nBlockStmt.List = append(nBlockStmt.List, nBlock.List...)
 			sel := &ast.SelectorExpr{X: nBlock.List[1].(*ast.AssignStmt).Lhs[0], Sel: ast.NewIdent("value")}
 			c.Args[i] = sel
+
 		}
 	}
+	return 0
 	//nBlockStmt.List = append(nBlockStmt.List, &ast.ExprStmt{X: c})
 	//fmt.Println(c.Fun, reflect.TypeOf(c.Fun))
 }
@@ -629,7 +635,7 @@ func (p *ASTParser) isRcv(n ast.Node) bool {
 	return false
 }
 
-func (p *ASTParser) handleClose(c *ast.CallExpr, nBlockStmt *ast.BlockStmt) {
+func (p *ASTParser) handleClose(c *ast.CallExpr, nBlockStmt *ast.BlockStmt) int {
 	if id, ok := c.Fun.(*ast.Ident); ok && id.Name == "close" {
 		sel := &ast.SelectorExpr{X: ast.NewIdent("tracer"), Sel: ast.NewIdent("ClosePrep")}
 		sel2 := &ast.SelectorExpr{X: ast.NewIdent("tracer"), Sel: ast.NewIdent("CloseCommit")}
@@ -647,8 +653,9 @@ func (p *ASTParser) handleClose(c *ast.CallExpr, nBlockStmt *ast.BlockStmt) {
 		nBlockStmt.List = append(nBlockStmt.List, &ast.ExprStmt{X: prep})
 		nBlockStmt.List = append(nBlockStmt.List, &ast.ExprStmt{X: c})
 		nBlockStmt.List = append(nBlockStmt.List, &ast.ExprStmt{X: com})
-		return
+		return 1
 	}
+	return 0
 	//nBlockStmt.List = append(nBlockStmt.List, &ast.ExprStmt{X: c})
 }
 
