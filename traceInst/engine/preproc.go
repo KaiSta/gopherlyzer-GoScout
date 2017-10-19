@@ -613,7 +613,7 @@ func (p *ASTParser) handleRegCalls(c *ast.CallExpr, nBlockStmt *ast.BlockStmt) {
 			c.Args[i] = sel
 		}
 	}
-	nBlockStmt.List = append(nBlockStmt.List, &ast.ExprStmt{X: c})
+	//nBlockStmt.List = append(nBlockStmt.List, &ast.ExprStmt{X: c})
 	//fmt.Println(c.Fun, reflect.TypeOf(c.Fun))
 }
 
