@@ -75,8 +75,15 @@ func storeInTraces(thread uint64, values ...string) {
 func getThreadName(thread uint64) string {
 	threadID := "-"
 	vec, ok := threads.Load(thread)
-
+	// threads.Range(func(key, value interface{}) bool {
+	// 	fmt.Println(key, value, "||", thread)
+	// 	return true
+	// })
 	if !ok {
+		threads.Range(func(key, value interface{}) bool {
+			fmt.Println(key, value, "||", thread)
+			return true
+		})
 		panic("something bad")
 	}
 

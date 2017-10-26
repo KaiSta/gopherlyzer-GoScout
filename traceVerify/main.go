@@ -183,7 +183,7 @@ func getOps(l string) ([]Operation, string) {
 				curr.kind |= SEND
 			} else if c == '?' {
 				curr.kind |= RCV
-			} else if c == '#' {
+			} else if c == '0' {
 				curr.kind |= CLS
 			} else if c == 'W' {
 				curr.kind |= WAIT
@@ -957,237 +957,6 @@ func addVCs(m *machine, jsonFlag, plain, bench bool) []Item {
 	//fmt.Println("Prep2Time:", time.Since(s3))
 	//	fmt.Println(len(items))
 	return items
-	// // for _, it := range items {
-	// // 	fmt.Println(it)
-	// // }
-	// // fmt.Printf("\n\n")
-	// res := Result{}
-	// noAlts := true
-	// s4 := time.Now()
-	// cache := make(map[struct {
-	// 	ch string
-	// 	op OpKind
-	// }][]*Item)
-	// //fill cache in advance
-	// for i, it := range items {
-	// 	for _, op := range it.ops {
-	// 		s := struct {
-	// 			ch string
-	// 			op OpKind
-	// 		}{op.ch, op.kind}
-	// 		tmp := cache[s]
-	// 		tmp = append(tmp, &items[i])
-	// 		cache[s] = tmp
-	// 	}
-	// }
-
-	// var alternatives []Alternative
-
-	// for k, v := range cache {
-	// 	if k.op&PREPARE > 0 {
-	// 		opKind := OpKind(0)
-	// 		if k.op == PREPARE|RCV {
-	// 			opKind = PREPARE | SEND
-	// 		} else if k.op == PREPARE|SEND {
-	// 			opKind = PREPARE | RCV
-	// 		}
-	// 		s := struct {
-	// 			ch string
-	// 			op OpKind
-	// 		}{k.ch, opKind}
-	// 		partners := cache[s]
-
-	// 		for _, x := range v {
-	// 			alt := Alternative{Op: x.ShortString(), Unused: make([]string, 0), Used: make([]string, 0)}
-	// 			//	fmt.Println("alternatives for", x.ShortString())
-	// 			for _, y := range partners {
-	// 				if x.thread == y.thread {
-	// 					continue
-	// 				}
-	// 				if !x.vc.less(y.vc) && !y.vc.less(x.vc) {
-	// 					alt.Unused = append(alt.Unused, y.ShortString())
-	// 					//fmt.Println("\t", y.ShortString())
-	// 				}
-	// 			}
-	// 			if len(alt.Unused) > 1 {
-	// 				alternatives = append(alternatives, alt)
-	// 			}
-
-	// 		}
-	// 	}
-	// }
-	// fmt.Println("found", len(alternatives), "alternatives")
-
-	// if plain {
-	// 	for _, x := range alternatives {
-	// 		fmt.Println("alternatives for", x.Op)
-	// 		for i := range x.Unused {
-	// 			color.HiRed(fmt.Sprintf("\t%v", x.Unused[i]))
-	// 		}
-	// 	}
-	// }
-
-	// // for _, it := range items {
-	// // 	alt := Alternative{Op: "", Unused: make([]string, 0), Used: make([]string, 0)}
-	// // 	alternatives := make(map[string]struct{}) // []Item
-	// // 	for _, op := range it.ops {
-	// // 		opKind := OpKind(0)
-	// // 		if op.kind == OpKind(PREPARE|RCV) {
-	// // 			opKind = PREPARE | SEND
-	// // 		} else if op.kind == PREPARE|SEND {
-	// // 			opKind = PREPARE | RCV
-	// // 		} else {
-	// // 			continue
-	// // 		}
-	// // 		//add item to cache
-	// // 		s := fmt.Sprintf("%v%v", op.ch, op.kind)
-	// // 		tmp := cache[s]
-	// // 		tmp = append(tmp, it)
-	// // 		cache[s] = tmp
-
-	// // 		//look for an alternative
-	// // 		s = fmt.Sprintf("%v%v", op.ch, opKind)
-	// // 		partners := cache[s]
-
-	// // 		// //var alternatives []Item
-	// // 		// for _, x := range items {
-	// // 		// 	for _, y := range x.ops {
-	// // 		// 		if y.kind != opKind /*OpKind(PREPARE|SEND)*/ || y.ch != op.ch || x.thread == it.partner || x.thread == it.thread {
-	// // 		// 			continue
-	// // 		// 		}
-	// // 		// 		if !x.vc.less(it.vc) && !it.vc.less(x.vc) {
-	// // 		// 			//	alternatives = append(alternatives, x)
-	// // 		// 			alternatives[x.ShortString()] = struct{}{}
-	// // 		// 		}
-	// // 		// 	}
-	// // 		// }
-	// // 		// // for k := range alternatives {
-	// // 		// // 	fmt.Println("\t", k)
-	// // 		// // }
-	// // 	}
-
-	// // 	if len(alternatives) > 0 && !bench {
-	// // 		noAlts = false
-	// // 		f := false
-	// // 		if plain {
-	// // 			fmt.Println("Alternatives for", it)
-	// // 		}
-	// // 		// for _, x := range alternatives {
-	// // 		// 	color.HiRed(fmt.Sprintf("\t%v", x))
-	// // 		// }
-	// // 		vv, ok := chosenPartner[it.ShortString()]
-	// // 		alt.Op = it.ShortString()
-	// // 		for k := range alternatives {
-	// // 			if ok && vv.ShortString() == k {
-	// // 				continue
-	// // 			}
-	// // 			//	f = true
-	// // 			if plain {
-	// // 				color.HiRed(fmt.Sprintf("\t%v", k))
-
-	// // 			} else if jsonFlag {
-	// // 				alt.Unused = append(alt.Used, k)
-	// // 			}
-	// // 		}
-
-	// // 		if ok {
-	// // 			if plain {
-	// // 				color.HiGreen(fmt.Sprintf("\t%v", vv.ShortString()))
-	// // 			} else if jsonFlag {
-	// // 				alt.Used = append(alt.Used, vv.ShortString())
-	// // 			}
-	// // 		}
-	// // 		if f {
-	// // 			return
-	// // 		}
-	// // 	}
-
-	// // 	if jsonFlag && alt.Op != "" {
-	// // 		res.Alts = append(res.Alts, alt)
-	// // 	}
-	// // }
-	// if noAlts {
-	// 	if plain {
-	// 		fmt.Println("No alternatives found!")
-	// 	}
-	// }
-	// fmt.Println("AlternativeSearchTime:", time.Since(s4))
-	// // for _, it := range items {
-	// // 	fmt.Println(">>>", it)
-	// // }
-
-	// // for k, v := range chosenPartner {
-	// // 	fmt.Println(">>>", k, v)
-	// // }
-
-	// // if bench {
-	// // 	return
-	// // }
-
-	// //check for close operations and what operations happend parallel on the same channel
-	// //this way we can find another kind of alternative schedules! in which for example a receive or even a send happened
-	// //shortly before the close but also could have happend afterwards!
-	// if plain {
-	// 	fmt.Printf("\n\n")
-	// }
-
-	// for _, it := range items {
-	// 	for _, op := range it.ops {
-	// 		if op.kind != COMMIT|CLS {
-	// 			continue
-	// 		}
-	// 		//var altNAfter []Item
-	// 		altNAfter := make(map[string]int)
-	// 		for _, x := range items {
-	// 			for _, y := range x.ops {
-	// 				if y.ch != op.ch || y.kind&CLS > 0 {
-	// 					continue
-	// 				}
-	// 				v := 0
-	// 				if y.kind&SEND > 0 {
-	// 					v = 1
-	// 				}
-	// 				if !x.vc.less(it.vc) && !it.vc.less(x.vc) {
-	// 					altNAfter[x.ShortString()] = v
-	// 					//	altNAfter = append(altNAfter, x)
-	// 				} else if it.vc.less(x.vc) {
-	// 					altNAfter[x.ShortString()] = v
-	// 					//	altNAfter = append(altNAfter, x)
-	// 				}
-	// 			}
-	// 		}
-
-	// 		if plain {
-	// 			fmt.Println("Actions parallel or after", it)
-	// 		}
-	// 		alt := Alternative{Op: it.ShortString(), Used: make([]string, 0), Unused: make([]string, 0)}
-	// 		for k, v := range altNAfter {
-	// 			if v > 0 {
-	// 				if plain {
-	// 					color.HiRed(fmt.Sprintf("\t%v", k))
-	// 				} else if jsonFlag {
-	// 					alt.Unused = append(alt.Unused, k)
-	// 				}
-
-	// 			} else {
-	// 				if plain {
-	// 					color.HiGreen(fmt.Sprintf("\t%v", k))
-	// 				} else if jsonFlag {
-	// 					alt.Used = append(alt.Used, k)
-	// 				}
-	// 			}
-	// 		}
-	// 		res.POs = append(res.POs, alt)
-	// 	}
-	// }
-
-	// if jsonFlag {
-	// 	res, err := json.Marshal(res)
-	// 	if err != nil {
-	// 		panic(err)
-	// 	}
-	// 	fmt.Println(string(res))
-	// }
 }
 
 func findAlternatives(items []Item, plain, jsonFlag, bench bool) {
@@ -1273,7 +1042,9 @@ func findAlternatives(items []Item, plain, jsonFlag, bench bool) {
 		}
 	}
 
-	fmt.Println("found", len(alternatives), "alternatives")
+	if bench {
+		fmt.Println("found", len(alternatives), "alternatives")
+	}
 
 	if plain {
 		for _, x := range alternatives {
@@ -1286,8 +1057,11 @@ func findAlternatives(items []Item, plain, jsonFlag, bench bool) {
 			}
 		}
 	}
-	fmt.Println("AlternativeSearchTime:", time.Since(s4))
+	if bench {
+		fmt.Println("AlternativeSearchTime:", time.Since(s4))
+	}
 
+	var res Result
 	if jsonFlag {
 		var jsonOut []Alternative
 		for _, x := range alternatives {
@@ -1300,12 +1074,7 @@ func findAlternatives(items []Item, plain, jsonFlag, bench bool) {
 			}
 			jsonOut = append(jsonOut, alt)
 		}
-
-		res, err := json.Marshal(jsonOut)
-		if err != nil {
-			panic(err)
-		}
-		fmt.Println(string(res))
+		res.Alts = jsonOut
 	}
 
 	if bench {
@@ -1316,8 +1085,14 @@ func findAlternatives(items []Item, plain, jsonFlag, bench bool) {
 		if k.op != COMMIT|CLS {
 			continue
 		}
+		var alt Alternative
 		for _, c := range v {
-			fmt.Println("parallel to", c)
+			if plain {
+				fmt.Println("parallel to", c)
+			} else {
+				alt.Op = c.ShortString()
+			}
+
 			//rcv partner
 			s := struct {
 				ch string
@@ -1326,7 +1101,11 @@ func findAlternatives(items []Item, plain, jsonFlag, bench bool) {
 			rcvpartners := cache[s]
 			for _, x := range rcvpartners {
 				if !x.vc.less(c.vc) && !c.vc.less(x.vc) {
-					color.HiGreen("\t%v", x.ShortString())
+					if plain {
+						color.HiGreen("\t%v", x.ShortString())
+					} else {
+						alt.Used = append(alt.Used, x.ShortString())
+					}
 				}
 			}
 
@@ -1338,12 +1117,26 @@ func findAlternatives(items []Item, plain, jsonFlag, bench bool) {
 			sndpartners := cache[s]
 			for _, x := range sndpartners {
 				if !x.vc.less(c.vc) && !c.vc.less(x.vc) {
-					color.HiRed("\t%v", x.ShortString())
+					if plain {
+						color.HiRed("\t%v", x.ShortString())
+					} else {
+						alt.Unused = append(alt.Unused, x.ShortString())
+					}
+
 				}
 			}
 		}
+		if len(alt.Used)+len(alt.Unused) > 0 {
+			res.POs = append(res.POs, alt)
+		}
 
 	}
+
+	out, err := json.Marshal(res)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(string(out))
 }
 
 func findAlternatives2(items []Item, plain, json, bench bool) {
@@ -1589,8 +1382,8 @@ func findDGAlternatives(threadGraphs []*Node, plain bool) {
 }
 
 type Result struct {
-	Alts []Alternative2
-	POs  []Alternative2
+	Alts []Alternative
+	POs  []Alternative
 }
 type Alternative struct {
 	Op     string   `json:"op"`
