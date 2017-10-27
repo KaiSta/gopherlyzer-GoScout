@@ -291,7 +291,7 @@ func PostUnlock(m interface{}, s string) {
 	informWatchDog()
 }
 
-func SendPrep(x interface{}, s string) {
+func PrepSend(x interface{}, s string) {
 	thread := GetGID()
 	var chanID string
 
@@ -322,7 +322,7 @@ func SendPrep(x interface{}, s string) {
 	informWatchDog()
 }
 
-func SendCommit(x interface{}, s string) {
+func PostSend(x interface{}, s string) {
 	thread := GetGID()
 	var chanID string
 
@@ -353,7 +353,7 @@ func SendCommit(x interface{}, s string) {
 	informWatchDog()
 }
 
-func RcvPrep(x interface{}, s string) {
+func PrepRcv(x interface{}, s string) {
 	thread := GetGID()
 	var chanID string
 
@@ -387,7 +387,7 @@ func RcvPrep(x interface{}, s string) {
 	informWatchDog()
 }
 
-func RcvCommit(x interface{}, s string, p uint64) {
+func PostRcv(x interface{}, s string, p uint64) {
 	thread := GetGID()
 	var chanID string
 
@@ -512,7 +512,7 @@ func ClosePrep(x interface{}, s string) {
 
 	informWatchDog()
 }
-func CloseCommit(x interface{}, s string) {
+func PostClose(x interface{}, s string) {
 	thread := GetGID()
 	var chanID string
 
