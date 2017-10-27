@@ -430,7 +430,7 @@ type SelectEv struct {
 	S  string
 }
 
-func SelectPrep(evs ...SelectEv) {
+func PrepSelect(evs ...SelectEv) {
 	thread := GetGID()
 	chanevs := ""
 	for i, x := range evs {
@@ -479,7 +479,7 @@ func SelectPrep(evs ...SelectEv) {
 	informWatchDog()
 }
 
-func ClosePrep(x interface{}, s string) {
+func PrepClose(x interface{}, s string) {
 	thread := GetGID()
 	var chanID string
 

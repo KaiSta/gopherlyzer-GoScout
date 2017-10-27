@@ -314,8 +314,8 @@ func (p *ASTParser) getWriteAcc(e ast.Expr) *ast.CallExpr {
 }
 
 func (p *ASTParser) handleSendStmt(x *ast.SendStmt, nBlockStmt *ast.BlockStmt) {
-	sel := &ast.SelectorExpr{X: ast.NewIdent("tracer"), Sel: ast.NewIdent("SendPrep")}
-	sel2 := &ast.SelectorExpr{X: ast.NewIdent("tracer"), Sel: ast.NewIdent("SendCommit")}
+	sel := &ast.SelectorExpr{X: ast.NewIdent("tracer"), Sel: ast.NewIdent("PrepSend")}
+	sel2 := &ast.SelectorExpr{X: ast.NewIdent("tracer"), Sel: ast.NewIdent("PostSend")}
 	sel3 := &ast.SelectorExpr{X: ast.NewIdent("tracer"), Sel: ast.NewIdent("GetGID")}
 	gpid := &ast.CallExpr{Fun: sel3}
 
@@ -405,8 +405,8 @@ func (p *ASTParser) handleRcvStmt(x *ast.UnaryExpr, nBlockStmt *ast.BlockStmt) {
 
 	assign := &ast.AssignStmt{Lhs: []ast.Expr{ast.NewIdent(fmt.Sprintf("tmp%v", p.nameID))}, Tok: token.DEFINE, Rhs: []ast.Expr{x}}
 
-	sel := &ast.SelectorExpr{X: ast.NewIdent("tracer"), Sel: ast.NewIdent("RcvPrep")}
-	sel2 := &ast.SelectorExpr{X: ast.NewIdent("tracer"), Sel: ast.NewIdent("RcvCommit")}
+	sel := &ast.SelectorExpr{X: ast.NewIdent("tracer"), Sel: ast.NewIdent("PrepRcv")}
+	sel2 := &ast.SelectorExpr{X: ast.NewIdent("tracer"), Sel: ast.NewIdent("PostRcv")}
 	sel3 := &ast.SelectorExpr{X: ast.NewIdent(fmt.Sprintf("tmp%v", p.nameID)), Sel: ast.NewIdent("threadId")}
 
 	tmp := p.FSet.Position(x.Pos())
@@ -637,8 +637,8 @@ func (p *ASTParser) isRcv(n ast.Node) bool {
 
 func (p *ASTParser) handleClose(c *ast.CallExpr, nBlockStmt *ast.BlockStmt) int {
 	if id, ok := c.Fun.(*ast.Ident); ok && id.Name == "close" {
-		sel := &ast.SelectorExpr{X: ast.NewIdent("tracer"), Sel: ast.NewIdent("ClosePrep")}
-		sel2 := &ast.SelectorExpr{X: ast.NewIdent("tracer"), Sel: ast.NewIdent("CloseCommit")}
+		sel := &ast.SelectorExpr{X: ast.NewIdent("tracer"), Sel: ast.NewIdent("PrepClose")}
+		sel2 := &ast.SelectorExpr{X: ast.NewIdent("tracer"), Sel: ast.NewIdent("PostClose")}
 
 		tmp := p.FSet.Position(c.Pos())
 		q, r := filepath.Abs(tmp.Filename)
@@ -677,7 +677,7 @@ func (p *ASTParser) handleSelect(s *ast.SelectStmt, nBlockStmt *ast.BlockStmt) {
 			}
 			pos = &ast.BasicLit{Kind: token.STRING, Value: fmt.Sprintf("\"%v:%v\"", p.escapeSlashes(q), tmp.Line)}
 
-			sel2 := &ast.SelectorExpr{X: ast.NewIdent("tracer"), Sel: ast.NewIdent("RcvCommit")}
+			sel2 := &ast.SelectorExpr{X: ast.NewIdent("tracer"), Sel: ast.NewIdent("PostRcv")}
 			sel3 := &ast.SelectorExpr{X: ast.NewIdent("tracer"), Sel: ast.NewIdent("GetGID")}
 			tmp2 := p.FSet.Position(comm.Pos())
 			pa, r := filepath.Abs(tmp.Filename)
@@ -750,7 +750,7 @@ func (p *ASTParser) handleSelect(s *ast.SelectStmt, nBlockStmt *ast.BlockStmt) {
 			args = append(args, &ast.CompositeLit{Type: sel, Elts: []ast.Expr{ast.NewIdent("nil"), b, pos}})
 		}
 	}
-	sel := &ast.SelectorExpr{X: ast.NewIdent("tracer"), Sel: ast.NewIdent("SelectPrep")}
+	sel := &ast.SelectorExpr{X: ast.NewIdent("tracer"), Sel: ast.NewIdent("PrepSelect")}
 	prep := &ast.CallExpr{Fun: sel, Args: args}
 	nBlockStmt.List = append(nBlockStmt.List, &ast.ExprStmt{X: prep})
 	nBlockStmt.List = append(nBlockStmt.List, s)
