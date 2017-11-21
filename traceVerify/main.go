@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -1132,11 +1133,14 @@ func findAlternatives(items []Item, plain, jsonFlag, bench bool) {
 
 	}
 
-	out, err := json.Marshal(res)
+	enc := json.NewEncoder(os.Stdout)
+	err := enc.Encode(res)
+
+	//out, err := json.Marshal(res)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(string(out))
+	//	fmt.Println(string(out))
 }
 
 func findAlternatives2(items []Item, plain, json, bench bool) {
