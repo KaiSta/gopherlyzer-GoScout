@@ -1,0 +1,9 @@
+main,[(1,0,S,-)],C,-
+main,[(2,0,S,-)],C,-
+main,[(1,0,?,C:\Users\stka0001\Github\gopherlyzer-GoScout\Tests\demo.go:18)],P,-
+main,[(1,0,?,C:\Users\stka0001\Github\gopherlyzer-GoScout\Tests\demo.go:18)],C,A00
+A00,[(1,0,W,-)],C,-
+A00,[(1,0,!,C:\Users\stka0001\Github\gopherlyzer-GoScout\Tests\demo.go:6)],P,-
+A00,[(1,0,!,C:\Users\stka0001\Github\gopherlyzer-GoScout\Tests\demo.go:6)],C,-
+B11,[(2,0,W,-)],C,-
+B11,[(1,0,!,C:\Users\stka0001\Github\gopherlyzer-GoScout\Tests\demo.go:10)],P,-

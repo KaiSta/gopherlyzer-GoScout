@@ -24,7 +24,7 @@ func main() {
 	start := time.Now()
 	ch := make(chan int)
 	go generate(ch)
-	for i := 0; i < 500; i++ {
+	for i := 0; i < 100; i++ {
 		prime := <-ch
 		//fmt.Println(prime)
 		ch1 := make(chan int)

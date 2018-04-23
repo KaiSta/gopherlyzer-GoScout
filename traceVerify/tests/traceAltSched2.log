@@ -9,7 +9,8 @@ foo0,[(2,0,?,tests\test.go:1)],C,foo1
 foo1,[(2,0,!,tests\test.go:3)],C,-
 foo0,[(1,0,!,tests\test.go:2)],P,-
 foo0,[(1,0,!,tests\test.go:2)],C,-
-main,[(1,0,?,tests\test.go:5)],C,foo0
+main,[(1,0,?,tests\test.go:6)],C,foo0
+main,[(1,0,?,tests\test.go:7)],P,-
 
 
 foo0() {

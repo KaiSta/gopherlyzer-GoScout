@@ -6,6 +6,9 @@ func foo(x chan int) {
 func bar(x chan int) {
 	<-x
 }
+func baz2(x chan int) {
+	x <- 2
+}
 func baz(x chan int) {
 	close(x)
 }

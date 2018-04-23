@@ -1,0 +1,14 @@
+Showing nodes accounting for 89.22s, 64.79% of 137.70s total
+Dropped 267 nodes (cum <= 0.69s)
+Showing top 10 nodes out of 97
+      flat  flat%   sum%        cum   cum%
+    39.99s 29.04% 29.04%     39.99s 29.04%  runtime.procyield C:\Go\src\runtime\asm_amd64.s
+    11.02s  8.00% 37.04%     11.03s  8.01%  runtime.stdcall2 C:\Go\src\runtime\os_windows.go
+     9.60s  6.97% 44.02%      9.64s  7.00%  runtime.osyield C:\Go\src\runtime\os_windows.go
+     8.22s  5.97% 49.99%      8.26s  6.00%  runtime.cgocall C:\Go\src\runtime\cgocall.go
+     4.68s  3.40% 53.38%     65.42s 47.51%  runtime.lock C:\Go\src\runtime\lock_sema.go
+     3.71s  2.69% 56.08%      3.71s  2.69%  runtime.findnull C:\Go\src\runtime\string.go
+     3.16s  2.29% 58.37%      3.45s  2.51%  runtime.unlock C:\Go\src\runtime\lock_sema.go
+     3.11s  2.26% 60.63%      3.62s  2.63%  runtime.step C:\Go\src\runtime\symtab.go
+     3.02s  2.19% 62.82%     63.74s 46.29%  runtime.printlock C:\Go\src\runtime\print.go
+     2.71s  1.97% 64.79%         7s  5.08%  runtime.recordForPanic C:\Go\src\runtime\print.go
