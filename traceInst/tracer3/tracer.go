@@ -1,4 +1,4 @@
-package tracer
+package tracer3
 
 import (
 	"bytes"
@@ -28,6 +28,11 @@ var watchDog chan struct{}
 var done chan struct{}
 var waitSigID uint64
 
+type concurrentSlice struct {
+	sync.Mutex
+	data []string
+}
+
 func init() {
 	//chans = hashmap.NewCMapv2()
 	chans = sync.Map{}
@@ -35,10 +40,10 @@ func init() {
 	traces = sync.Map{}
 	//threads = hashmap.NewCMapv2()
 	threads = sync.Map{}
-	vec := vector.NewCVector()
-	vec.Push_Back("1")
-	threads.Store(uint64(1), vec)
+
+	threads.Store(uint64(1), uint64(1))
 	threadID = 2
+
 	watchDog = make(chan struct{})
 	done = make(chan struct{})
 }
@@ -65,12 +70,17 @@ func informWatchDog() {
 func storeInTraces(thread uint64, values ...string) {
 	vec, _ := traces.Load(thread)
 	if vec == nil {
-		vec = vector.NewCVector()
+		vec = &concurrentSlice{data: make([]string, 0)} //vector.NewCVector()
 	}
+
+	s := vec.(*concurrentSlice)
+	s.Lock()
 	for _, n := range values {
-		vec.(*vector.CVector).Push_Back(n)
+		s.data = append(s.data, n)
+		//	vec.(*vector.CVector).Push_Back(n)
 	}
-	traces.Store(thread, vec)
+	s.Unlock()
+	traces.Store(thread, s)
 }
 
 func getThreadName(thread uint64) string {
@@ -134,13 +144,15 @@ func writeBack() {
 	}
 
 	traces.Range(func(key, value interface{}) bool {
-		vec := value.(*vector.CVector)
-		iter := vec.Iterator()
-		for iter.HasNext() {
-			logfile.WriteString(iter.Get() + "\n")
-			iter.Delete()
-			iter.Next()
+		vec := value.(*concurrentSlice)
+
+		vec.Lock()
+		for i := range vec.data {
+			logfile.WriteString(vec.data[i] + "\n")
 		}
+		vec.data = make([]string, 0)
+		vec.Unlock()
+
 		return true
 	})
 
@@ -169,28 +181,22 @@ func RegisterChan(x interface{}, c int) {
 
 func RegisterThread(s string, id uint64) {
 	thread := GetGID()
-	threadN := fmt.Sprintf("%v%v", s, atomic.LoadUint64(&threadID))
-	threadN = fmt.Sprintf("%v", threadID)
-	vec, _ := threads.Load(thread)
-	if vec == nil {
-		vec = vector.NewCVector()
-	}
-	vec.(*vector.CVector).Push_Back(threadN)
 
-	threads.Store(thread, vec)
-
+	threads.Store(thread, threadID)
+	storeInTraces(thread, fmt.Sprintf("%v,[(%v,0,W,-)],C,-", threadID, id))
 	atomic.AddUint64(&threadID, 1)
-
-	storeInTraces(thread, fmt.Sprintf("%v,[(%v,0,W,-)],C,-", threadN, id))
 
 	informWatchDog()
 }
 
 func AddSignal(id uint64) {
 	thread := GetGID()
-	threadID := getThreadName(thread)
+	//	threadID := getThreadName(thread)
+	threadID, ok := threads.Load(thread)
 
-	storeInTraces(thread, fmt.Sprintf("%v,[(%v,0,S,-)],C,-", threadID, id))
+	if ok {
+		storeInTraces(thread, fmt.Sprintf("%v,[(%v,0,S,-)],C,-", threadID, id))
+	}
 
 	informWatchDog()
 }
@@ -207,10 +213,12 @@ func WriteAcc(x interface{}, s string) {
 		name = "nil"
 	}
 
-	threadID := getThreadName(thread)
+	//threadID := getThreadName(thread)
+	threadID, ok := threads.Load(thread)
 
-	storeInTraces(thread, fmt.Sprintf("%v,[(%v,0,%v,%v)],%v,%v", threadID, name, "M", s, "C", "-"))
-
+	if ok {
+		storeInTraces(thread, fmt.Sprintf("%v,[(%v,0,%v,%v)],%v,%v", threadID, name, "M", s, "C", "-"))
+	}
 	informWatchDog()
 }
 func ReadAcc(x interface{}, s string) {
@@ -225,10 +233,12 @@ func ReadAcc(x interface{}, s string) {
 		name = "nil"
 	}
 
-	threadID := getThreadName(thread)
+	//threadID := getThreadName(thread)
+	threadID, ok := threads.Load(thread)
 
-	storeInTraces(thread, fmt.Sprintf("%v,[(%v,0,%v,%v)],%v,%v", threadID, name, "R", s, "C", "-"))
-
+	if ok {
+		storeInTraces(thread, fmt.Sprintf("%v,[(%v,0,%v,%v)],%v,%v", threadID, name, "R", s, "C", "-"))
+	}
 	informWatchDog()
 }
 
@@ -244,10 +254,12 @@ func PreLock(m interface{}, s string) {
 		name = "nil"
 	}
 
-	threadID := getThreadName(thread)
+	//threadID := getThreadName(thread)
+	threadID, ok := threads.Load(thread)
 
-	storeInTraces(thread, fmt.Sprintf("%v,[(%v,0,%v,%v)],%v,%v", threadID, name, "+", s, "P", "-"))
-
+	if ok {
+		storeInTraces(thread, fmt.Sprintf("%v,[(%v,0,%v,%v)],%v,%v", threadID, name, "+", s, "P", "-"))
+	}
 	informWatchDog()
 }
 func PostLock(m interface{}, s string) {
@@ -262,12 +274,15 @@ func PostLock(m interface{}, s string) {
 		name = "nil"
 	}
 
-	threadID := getThreadName(thread)
+	//	threadID := getThreadName(thread)
 
-	storeInTraces(thread, fmt.Sprintf("%v,[(%v,0,%v,%v)],%v,%v", name, name, "-", s, "P", "-"),
-		fmt.Sprintf("%v,[(%v,0,%v,%v)],%v,%v", threadID, name, "+", s, "C", "-"),
-		fmt.Sprintf("%v,[(%v,0,%v,%v)],%v,%v", name, name, "-", s, "C", threadID))
+	threadID, ok := threads.Load(thread)
 
+	if ok {
+		storeInTraces(thread, fmt.Sprintf("%v,[(%v,0,%v,%v)],%v,%v", name, name, "-", s, "P", "-"),
+			fmt.Sprintf("%v,[(%v,0,%v,%v)],%v,%v", threadID, name, "+", s, "C", "-"),
+			fmt.Sprintf("%v,[(%v,0,%v,%v)],%v,%v", name, name, "-", s, "C", threadID))
+	}
 	// traces.Store(thread, fmt.Sprintf("%v,[(%v,0,%v,%v)],%v,%v", name, name, "-", s, "P", "-"))
 	// traces.Store(thread, fmt.Sprintf("%v,[(%v,0,%v,%v)],%v,%v", threadID, name, "+", s, "C", "-"))
 	// traces.Store(thread, fmt.Sprintf("%v,[(%v,0,%v,%v)],%v,%v", name, name, "-", s, "C", threadID))
@@ -285,13 +300,15 @@ func PostUnlock(m interface{}, s string) {
 		name = "nil"
 	}
 
-	threadID := getThreadName(thread)
+	//threadID := getThreadName(thread)
+	threadID, ok := threads.Load(thread)
 
-	storeInTraces(thread, fmt.Sprintf("%v,[(%v,0,%v,%v)],%v,%v", threadID, name, "#", s, "P", "-"),
-		fmt.Sprintf("%v,[(%v,0,%v,%v)],%v,%v", name, name, "*", s, "P", "-"),
-		fmt.Sprintf("%v,[(%v,0,%v,%v)],%v,%v", threadID, name, "#", s, "C", "-"),
-		fmt.Sprintf("%v,[(%v,0,%v,%v)],%v,%v", name, name, "*", s, "C", threadID))
-
+	if ok {
+		storeInTraces(thread, fmt.Sprintf("%v,[(%v,0,%v,%v)],%v,%v", threadID, name, "#", s, "P", "-"),
+			fmt.Sprintf("%v,[(%v,0,%v,%v)],%v,%v", name, name, "*", s, "P", "-"),
+			fmt.Sprintf("%v,[(%v,0,%v,%v)],%v,%v", threadID, name, "#", s, "C", "-"),
+			fmt.Sprintf("%v,[(%v,0,%v,%v)],%v,%v", name, name, "*", s, "C", threadID))
+	}
 	// traces.Store(thread, fmt.Sprintf("%v,[(%v,0,%v,%v)],%v,%v", threadID, name, "#", s, "P", "-"))
 	// traces.Store(thread, fmt.Sprintf("%v,[(%v,0,%v,%v)],%v,%v", name, name, "*", s, "P", "-"))
 	// traces.Store(thread, fmt.Sprintf("%v,[(%v,0,%v,%v)],%v,%v", threadID, name, "#", s, "C", "-"))
@@ -320,10 +337,13 @@ func PrepSend(x interface{}, s string) {
 		chanID = "0,0"
 	}
 
-	threadID := getThreadName(thread)
+	//threadID := getThreadName(thread)
 
-	storeInTraces(thread, fmt.Sprintf("%v,[(%v,%v,%v)],%v,%v", threadID, chanID, "!", s, "P", "-"))
+	threadID, ok := threads.Load(thread)
 
+	if ok {
+		storeInTraces(thread, fmt.Sprintf("%v,[(%v,%v,%v)],%v,%v", threadID, chanID, "!", s, "P", "-"))
+	}
 	//threadid,chanid,op,location,status,partner
 	//traces.Store(thread, fmt.Sprintf("%v,[(%v,%v,%v)],%v,%v", threadID, chanID, "!", s, "P", "-"))
 
@@ -351,10 +371,13 @@ func PostSend(x interface{}, s string) {
 		chanID = "0,0"
 	}
 
-	threadID := getThreadName(thread)
+	//threadID := getThreadName(thread)
 
-	storeInTraces(thread, fmt.Sprintf("%v,[(%v,%v,%v)],%v,%v", threadID, chanID, "!", s, "C", "-"))
+	threadID, ok := threads.Load(thread)
 
+	if ok {
+		storeInTraces(thread, fmt.Sprintf("%v,[(%v,%v,%v)],%v,%v", threadID, chanID, "!", s, "C", "-"))
+	}
 	//threadid,chanid,op,location,status,partner
 	//	traces.Store(thread, fmt.Sprintf("%v,[(%v,%v,%v)],%v,%v", threadID, chanID, "!", s, "C", "-"))
 
@@ -385,10 +408,12 @@ func PrepRcv(x interface{}, s string) {
 		chanID = "0,0"
 	}
 
-	threadID := getThreadName(thread)
+	//	threadID := getThreadName(thread)
+	threadID, ok := threads.Load(thread)
 
-	storeInTraces(thread, fmt.Sprintf("%v,[(%v,%v,%v)],%v,%v", threadID, chanID, "?", s, "P", "-"))
-
+	if ok {
+		storeInTraces(thread, fmt.Sprintf("%v,[(%v,%v,%v)],%v,%v", threadID, chanID, "?", s, "P", "-"))
+	}
 	//threadid,chanid,op,location,status,partner
 	//	traces.Store(thread, fmt.Sprintf("%v,[(%v,%v,%v)],%v,%v", threadID, chanID, "?", s, "P", "-"))
 
@@ -420,13 +445,16 @@ func PostRcv(x interface{}, s string, p uint64) {
 		chanID = "0,0"
 	}
 
-	threadID := getThreadName(thread)
+	//	threadID := getThreadName(thread)
 
-	pID := getThreadName(p)
+	//pID := getThreadName(p)
 
 	//threadid,chanid,op,location,status,partner
-	storeInTraces(thread, fmt.Sprintf("%v,[(%v,%v,%v)],%v,%v", threadID, chanID, "?", s, "C", pID))
-
+	threadID, ok := threads.Load(thread)
+	pID, ok2 := threads.Load(p)
+	if ok && ok2 {
+		storeInTraces(thread, fmt.Sprintf("%v,[(%v,%v,%v)],%v,%v", threadID, chanID, "?", s, "C", pID))
+	}
 	//traces.Store(thread, fmt.Sprintf("%v,[(%v,%v,%v)],%v,%v", threadID, chanID, "?", s, "C", pID))
 
 	informWatchDog()
@@ -478,11 +506,13 @@ func PrepSelect(evs ...SelectEv) {
 			chanevs += ","
 		}
 	}
-	threadID := getThreadName(thread)
+	//threadID := getThreadName(thread)
+	threadID, ok := threads.Load(thread)
 
-	//threadid,chanops,status,partner
-	storeInTraces(thread, fmt.Sprintf("%v,[%v],%v,%v", threadID, chanevs, "P", 0))
-
+	if ok {
+		//threadid,chanops,status,partner
+		storeInTraces(thread, fmt.Sprintf("%v,[%v],%v,%v", threadID, chanevs, "P", 0))
+	}
 	//traces.Store(thread, fmt.Sprintf("%v,[%v],%v,%v", threadID, chanevs, "P", 0))
 	informWatchDog()
 }
@@ -511,10 +541,12 @@ func PrepClose(x interface{}, s string) {
 		chanID = "0,0"
 	}
 
-	threadID := getThreadName(thread)
+	//	threadID := getThreadName(thread)
+	threadID, ok := threads.Load(thread)
 
-	storeInTraces(thread, fmt.Sprintf("%v,[(%v,%v,%v)],%v,%v", threadID, chanID, "0", s, "P", "-"))
-
+	if ok {
+		storeInTraces(thread, fmt.Sprintf("%v,[(%v,%v,%v)],%v,%v", threadID, chanID, "0", s, "P", "-"))
+	}
 	//threadid,chanid,op,location,status,partner
 	//	traces.Store(thread, fmt.Sprintf("%v,[(%v,%v,%v)],%v,%v", threadID, chanID, "#", s, "P", "-"))
 
@@ -543,10 +575,12 @@ func PostClose(x interface{}, s string) {
 		chanID = "0,0"
 	}
 
-	threadID := getThreadName(thread)
+	//	threadID := getThreadName(thread)
+	threadID, ok := threads.Load(thread)
 
-	storeInTraces(thread, fmt.Sprintf("%v,[(%v,%v,%v)],%v,%v", threadID, chanID, "0", s, "C", "-"))
-
+	if ok {
+		storeInTraces(thread, fmt.Sprintf("%v,[(%v,%v,%v)],%v,%v", threadID, chanID, "0", s, "C", "-"))
+	}
 	//threadid,chanid,op,location,status,partner
 	//traces.Store(thread, fmt.Sprintf("%v,[(%v,%v,%v)],%v,%v", threadID, chanID, "#", s, "C", "-"))
 

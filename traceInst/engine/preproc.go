@@ -288,26 +288,26 @@ func (p *ASTParser) race_handleIncDec(x ast.Expr, nBlockStmt *ast.BlockStmt) {
 }
 
 func (p *ASTParser) getReadAcc(e ast.Expr) *ast.CallExpr {
-	tmp := p.FSet.Position(e.Pos())
-	q, r := filepath.Abs(tmp.Filename)
-	if r != nil {
-		panic(r)
-	}
-	b := &ast.BasicLit{Kind: token.STRING, Value: fmt.Sprintf("\"%v:%v\"", p.escapeSlashes(q), tmp.Line)}
+	// tmp := p.FSet.Position(e.Pos())
+	// q, r := filepath.Abs(tmp.Filename)
+	// if r != nil {
+	// 	panic(r)
+	// }
+	b := &ast.BasicLit{Kind: token.STRING, Value: fmt.Sprintf("\"%v\"", e.Pos())}
 
 	sel := &ast.SelectorExpr{X: ast.NewIdent("tracer"), Sel: ast.NewIdent("ReadAcc")}
 	call := &ast.CallExpr{Fun: sel, Args: []ast.Expr{e, b}}
 	return call
 }
 func (p *ASTParser) getWriteAcc(e ast.Expr) *ast.CallExpr {
-	fmt.Println("!!!!")
-	tmp := p.FSet.Position(e.Pos())
-	q, r := filepath.Abs(tmp.Filename)
-	if r != nil {
-		panic(r)
-	}
-	fmt.Println("..", tmp)
-	b := &ast.BasicLit{Kind: token.STRING, Value: fmt.Sprintf("\"%v:%v\"", p.escapeSlashes(q), tmp.Line)}
+
+	// tmp := p.FSet.Position(e.Pos())
+	// q, r := filepath.Abs(tmp.Filename)
+	// if r != nil {
+	// 	panic(r)
+	// }
+
+	b := &ast.BasicLit{Kind: token.STRING, Value: fmt.Sprintf("\"%v\"", e.Pos())}
 	sel := &ast.SelectorExpr{X: ast.NewIdent("tracer"), Sel: ast.NewIdent("WriteAcc")}
 	call := &ast.CallExpr{Fun: sel, Args: []ast.Expr{e, b}}
 	return call
@@ -319,12 +319,13 @@ func (p *ASTParser) handleSendStmt(x *ast.SendStmt, nBlockStmt *ast.BlockStmt) {
 	sel3 := &ast.SelectorExpr{X: ast.NewIdent("tracer"), Sel: ast.NewIdent("GetGID")}
 	gpid := &ast.CallExpr{Fun: sel3}
 
-	tmp := p.FSet.Position(x.Pos())
-	q, r := filepath.Abs(tmp.Filename)
-	if r != nil {
-		panic(r)
-	}
-	b := &ast.BasicLit{Kind: token.STRING, Value: fmt.Sprintf("\"%v:%v\"", p.escapeSlashes(q), tmp.Line)}
+	//tmp := p.FSet.Position(x.Pos())
+	// q, r := filepath.Abs(tmp.Filename)
+	// if r != nil {
+	// 	panic(r)
+	// }
+	//b := &ast.BasicLit{Kind: token.STRING, Value: fmt.Sprintf("\"%v:%v\"", p.escapeSlashes(q), tmp.Line)}
+	b := &ast.BasicLit{Kind: token.STRING, Value: fmt.Sprintf("\"%v\"", x.Pos())}
 	prep := &ast.CallExpr{Fun: sel, Args: []ast.Expr{x.Chan, b}}
 	commit := &ast.CallExpr{Fun: sel2, Args: []ast.Expr{x.Chan, b}}
 
@@ -409,12 +410,13 @@ func (p *ASTParser) handleRcvStmt(x *ast.UnaryExpr, nBlockStmt *ast.BlockStmt) {
 	sel2 := &ast.SelectorExpr{X: ast.NewIdent("tracer"), Sel: ast.NewIdent("PostRcv")}
 	sel3 := &ast.SelectorExpr{X: ast.NewIdent(fmt.Sprintf("tmp%v", p.nameID)), Sel: ast.NewIdent("threadId")}
 
-	tmp := p.FSet.Position(x.Pos())
-	q, r := filepath.Abs(tmp.Filename)
-	if r != nil {
-		panic(r)
-	}
-	b := &ast.BasicLit{Kind: token.STRING, Value: fmt.Sprintf("\"%v:%v\"", p.escapeSlashes(q), tmp.Line)}
+	// tmp := p.FSet.Position(x.Pos())
+	// q, r := filepath.Abs(tmp.Filename)
+	// if r != nil {
+	// 	panic(r)
+	// }
+	// b := &ast.BasicLit{Kind: token.STRING, Value: fmt.Sprintf("\"%v:%v\"", p.escapeSlashes(q), tmp.Line)}
+	b := &ast.BasicLit{Kind: token.STRING, Value: fmt.Sprintf("\"%v\"", x.Pos())}
 
 	prep := &ast.CallExpr{Fun: sel, Args: []ast.Expr{x.X, b}}
 	commit := &ast.CallExpr{Fun: sel2, Args: []ast.Expr{x.X, b, sel3}}
