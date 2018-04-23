@@ -1,0 +1,86 @@
+1. Receive channel from different package as result
+
+ch := packagename.GetChan() //returns chan int
+
+Problems:
+- this channel doesn't conform with the changed parts of the code. Example, if the code above continues with:
+
+foo(ch)  where foo =
+func foo(x chan struct{tid int, value int}) {
+  tracer.SendPrep(x, *codelocation*)
+  x <- struct{...}{GID(), 1}
+  tracer.SendCommit(x, *codelocation*)
+}
+
+Solution:
+proxyCh := make(chan struct{...})
+go func() {
+  ch <- <-proxyCh
+  tracer.RcvPrep(ch, *codeloc*)
+  tracer.RcvCommit(ch, *codeloc*, "packagename")
+}
+
+- the package name for the commit is easy to retrieve since the function that returns the channel must contain the package name in its selector expression.
+- Prep/commit after the send on ch to respect that receiving on proxyCh doesn't mean that the other thread also tries to receive on ch.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+2. Receive channel from different package as parameter:
+(only applies to exported functions!!)
+
+package foo
+func Test(ch chan int) {
+...
+}
+
+package bar
+ch := make(chan int)
+foo.test(ch)
+
+Problems:
+- the function could be used internally too, so we need to be able to conform to internal and external structure.
+
+Solution:
+
+- Use the default function name for the external version (with the same trick as in 1.) and build an additional internal one since we can change the internal calls?
+
+- Use the following to see who called function 'foo.Test' (to get the package name):
+
+    fpcs := make([]uintptr, 10)
+	n := runtime.Callers(2, fpcs)
+	fpcs = fpcs[:n]
+	frames := runtime.CallersFrames(fpcs)
+	frame, _ := frames.Next()
+	fmt.Println(frame.Function)
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+2. Return channel as result which is received by another package:
+
+package foo
+func Test() chan int {
+  return make(chan int)
+}
+
+package bar
+ch := foo.test()
+
+Problem:
+- Can't change the interface of a package, hence exported functions must still return a unchanged channel.
+
+Solution:
+
+- One exported and one intern version(fully interstumented) (internal version delivers more informations)
+
+
+package foo
+//exported version
+func Test() chan int {
+  ch := make(chan int)
+  
+  return ch
+}
+
+package bar
+ch := foo.test()

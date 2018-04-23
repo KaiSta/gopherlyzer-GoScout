@@ -1,0 +1,6 @@
+main,[(1,0,S,-)],C,-
+main,[(1,0,?,C:\Users\stka0001\Github\gopherlyzer-GoScout\traceInst\tests\simple.go:10)],P,-
+main,[(1,0,?,C:\Users\stka0001\Github\gopherlyzer-GoScout\traceInst\tests\simple.go:10)],C,foo00
+foo00,[(1,0,W,-)],C,-
+foo00,[(1,0,!,C:\Users\stka0001\Github\gopherlyzer-GoScout\traceInst\tests\simple.go:4)],P,-
+foo00,[(1,0,!,C:\Users\stka0001\Github\gopherlyzer-GoScout\traceInst\tests\simple.go:4)],C,-

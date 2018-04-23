@@ -1,0 +1,24 @@
+X,[(1,0,!,tests\test.go:3)],P,-
+FUNC,[(1,0,?,tests\test.go:1)],P,-
+main,[(1,0,?,tests\test.go:2)],P,-
+X,[(1,0,!,tests\test.go:3)],C,-
+FUNC,[(1,0,?,tests\test.go:1)],C,X
+X,[(1,0,!,tests\test.go:4)],P,-
+main,[(1,0,?,tests\test.go:2)],C,X
+X,[(1,0,!,tests\test.go:4)],C,-
+
+
+
+
+
+found 4 alternatives
+alternatives for FUNC,[(1(0),?,P,tests\test.go:1)]
+        X,[(1(0),!,P,tests\test.go:3)]
+alternatives for main,[(1(0),?,P,tests\test.go:2)]
+        X,[(1(0),!,P,tests\test.go:3)]
+        X,[(1(0),!,P,tests\test.go:4)]
+alternatives for X,[(1(0),!,P,tests\test.go:3)]
+        FUNC,[(1(0),?,P,tests\test.go:1)]
+        main,[(1(0),?,P,tests\test.go:2)]
+alternatives for X,[(1(0),!,P,tests\test.go:4)]
+        main,[(1(0),?,P,tests\test.go:2)]

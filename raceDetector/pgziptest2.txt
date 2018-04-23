@@ -1,0 +1,78 @@
+pending events fun236 2 fun236,[(3(16),?,P,gzip.go:378)]
+pending events fun236 2 fun236,[(3(16),?,C,gzip.go:378)]
+Alternatives for select main1,[(3(16),!,P,gzip.go:245),(2(0),?,P,gzip.go:245)],0:
+	fun236,[(3(16),?,P,gzip.go:378)], 1
+
+
+
+-----------
+
+-----------
+Alternatives for thread zcompressBlock123
+Alternatives for thread zcompressBlock159
+Alternatives for thread zcompressBlock169
+Alternatives for thread main1
+	For Event main1,[(3(16),!,P,gzip.go:245),(2(0),?,P,gzip.go:245)],0
+		fun236,[(3(16),?,P,gzip.go:378)]
+		fun236,[(3(16),?,P,gzip.go:378)]
+	For Event main1,[(3(16),!,P,gzip.go:245),(2(0),?,P,gzip.go:245)],0
+		fun236,[(3(16),?,P,gzip.go:378)]
+		fun236,[(3(16),?,P,gzip.go:378)]
+	For Event main1,[(3(16),!,P,gzip.go:245),(2(0),?,P,gzip.go:245)],0
+		fun236,[(3(16),?,P,gzip.go:378)]
+		fun236,[(3(16),?,P,gzip.go:378)]
+		fun236,[(3(16),?,P,gzip.go:378)]
+	For Event main1,[(3(16),!,P,gzip.go:245),(2(0),?,P,gzip.go:245)],0
+		fun236,[(3(16),?,P,gzip.go:378)]
+		fun236,[(3(16),?,P,gzip.go:378)]
+		fun236,[(3(16),?,P,gzip.go:378)]
+	For Event main1,[(3(16),!,P,gzip.go:245),(2(0),?,P,gzip.go:245)],0
+		fun236,[(3(16),?,P,gzip.go:378)]
+		fun236,[(3(16),?,P,gzip.go:378)]
+		fun236,[(3(16),?,P,gzip.go:378)]
+		fun236,[(3(16),?,P,gzip.go:378)]
+	For Event main1,[(3(16),!,P,gzip.go:245),(2(0),?,P,gzip.go:245)],0
+		fun236,[(3(16),?,P,gzip.go:378)]
+		fun236,[(3(16),?,P,gzip.go:378)]
+		fun236,[(3(16),?,P,gzip.go:378)]
+		fun236,[(3(16),?,P,gzip.go:378)]
+	For Event main1,[(3(16),#,P,gzip.go:492)]
+		fun236,[(3(16),?,P,gzip.go:378)]
+		fun236,[(3(16),?,P,gzip.go:378)]
+		fun236,[(3(16),?,P,gzip.go:378)]
+		fun236,[(3(16),?,P,gzip.go:378)]
+		fun236,[(3(16),?,P,gzip.go:378)]
+		fun236,[(3(16),?,C,gzip.go:378)]
+Alternatives for thread fun236
+	For Event fun236,[(3(16),?,P,gzip.go:378)]
+		main1,[(3(16),!,P,gzip.go:245),(2(0),?,P,gzip.go:245)],0
+		main1,[(3(16),!,P,gzip.go:245),(2(0),?,P,gzip.go:245)],0
+		main1,[(3(16),!,P,gzip.go:245),(2(0),?,P,gzip.go:245)],0
+	For Event fun236,[(3(16),?,P,gzip.go:378)]
+		main1,[(3(16),!,P,gzip.go:245),(2(0),?,P,gzip.go:245)],0
+		main1,[(3(16),!,P,gzip.go:245),(2(0),?,P,gzip.go:245)],0
+		main1,[(3(16),!,P,gzip.go:245),(2(0),?,P,gzip.go:245)],0
+		main1,[(3(16),!,P,gzip.go:245),(2(0),?,P,gzip.go:245)],0
+		main1,[(3(16),!,P,gzip.go:245),(2(0),?,P,gzip.go:245)],0
+		main1,[(3(16),!,P,gzip.go:245),(2(0),?,P,gzip.go:245)],0
+		main1,[(3(16),#,P,gzip.go:492)]
+	For Event fun236,[(3(16),?,P,gzip.go:378)]
+		main1,[(3(16),!,P,gzip.go:245),(2(0),?,P,gzip.go:245)],0
+		main1,[(3(16),!,P,gzip.go:245),(2(0),?,P,gzip.go:245)],0
+		main1,[(3(16),!,P,gzip.go:245),(2(0),?,P,gzip.go:245)],0
+		main1,[(3(16),!,P,gzip.go:245),(2(0),?,P,gzip.go:245)],0
+		main1,[(3(16),!,P,gzip.go:245),(2(0),?,P,gzip.go:245)],0
+		main1,[(3(16),!,P,gzip.go:245),(2(0),?,P,gzip.go:245)],0
+		main1,[(3(16),#,P,gzip.go:492)]
+	For Event fun236,[(3(16),?,P,gzip.go:378)]
+		main1,[(3(16),!,P,gzip.go:245),(2(0),?,P,gzip.go:245)],0
+		main1,[(3(16),!,P,gzip.go:245),(2(0),?,P,gzip.go:245)],0
+		main1,[(3(16),!,P,gzip.go:245),(2(0),?,P,gzip.go:245)],0
+		main1,[(3(16),!,P,gzip.go:245),(2(0),?,P,gzip.go:245)],0
+		main1,[(3(16),#,P,gzip.go:492)]
+	For Event fun236,[(3(16),?,P,gzip.go:378)]
+		main1,[(3(16),!,P,gzip.go:245),(2(0),?,P,gzip.go:245)],0
+		main1,[(3(16),!,P,gzip.go:245),(2(0),?,P,gzip.go:245)],0
+		main1,[(3(16),#,P,gzip.go:492)]
+Alternatives for thread zcompressBlock140
+Alternatives for thread zcompressBlock146

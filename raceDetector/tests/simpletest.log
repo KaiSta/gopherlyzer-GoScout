@@ -1,0 +1,17 @@
+main1,[(1,0,S,-)],C,-
+main1,[(1,0,?,tests\simple.go:13)],P,-
+main1,[(1,0,?,tests\simple.go:13)],C,foo020
+main1,[(1,0,?,tests\simple.go:14)],P,-
+main1,[(1,0,?,tests\simple.go:14)],C,foo020
+main1,[(1,0,?,tests\simple.go:14)],P,-
+main1,[(1,0,?,tests\simple.go:14)],C,foo020
+main1,[(825741361448,0,M,tests\simple.go:14)],C,-
+foo020,[(1,0,W,-)],C,-
+foo020,[(825741361384,0,R,tests\simple.go:4)],C,-
+foo020,[(1,0,!,tests\simple.go:4)],P,-
+foo020,[(1,0,!,tests\simple.go:4)],C,-
+foo020,[(1,0,!,tests\simple.go:5)],P,-
+foo020,[(1,0,!,tests\simple.go:5)],C,-
+foo020,[(1,0,!,tests\simple.go:6)],P,-
+foo020,[(1,0,!,tests\simple.go:6)],C,-
+foo020,[(1,0,!,tests\simple.go:7)],P,-

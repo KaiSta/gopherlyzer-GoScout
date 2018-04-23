@@ -1,0 +1,10 @@
+main1,[(1,0,S,-)],C,-
+main1,[(2,0,S,-)],C,-
+main1,[(1,0,C,C:\Users\stka0001\Github\SpeedyGo\traceInstv2\tests\closeChan.go:12)],P,-
+main1,[(1,0,C,C:\Users\stka0001\Github\SpeedyGo\traceInstv2\tests\closeChan.go:12)],C,-
+fun122,[(2,0,W,-)],C,-
+fun122,[(1,0,?,tests\closeChan.go:10)],P,-
+fun122,[(1,0,?,tests\closeChan.go:10)],C,fun020
+fun020,[(1,0,W,-)],C,-
+fun020,[(1,0,!,tests\closeChan.go:7)],P,-
+fun020,[(1,0,!,tests\closeChan.go:7)],C,-

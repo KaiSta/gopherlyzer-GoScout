@@ -1,0 +1,12 @@
+main,[(1,0,?,tests\test.go:1)],P,-
+foo,[(2,0,?,tests\test.go:2)],P,-
+bar1,[(2,0,!,tests\test.go:3)],P,-
+bar2,[(1,0,!,tests\test.go:4)],P,-
+main,[(1,0,?,tests\test.go:1)],C,bar2
+bar2,[(1,0,!,tests\test.go:4)],C,-
+foo,[(2,0,?,tests\test.go:2)],C,bar1
+bar1,[(2,0,!,tests\test.go:3)],C,-
+main,[(1,0,?,tests\test.go:5)],P,-
+bar1,[(1,0,!,tests\test.go:6)],P,-
+main,[(1,0,?,tests\test.go:5)],C,bar1
+bar1,[(1,0,!,tests\test.go:6)],C,-

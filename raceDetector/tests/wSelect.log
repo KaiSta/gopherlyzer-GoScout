@@ -1,0 +1,5 @@
+main1,[(1,0,S,-)],C,-
+main1,[(1,0,!,tests\wSelect.go:11),(2,0,?,tests\wSelect.go:11),(0,0,?,tests\wSelect.go:11)],P,0
+main1,[(0,0,?,tests\wSelect.go:14)],C,-
+fun07,[(1,0,W,-)],C,-
+fun07,[(1,0,?,tests\wSelect.go:8)],P,-

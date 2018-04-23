@@ -1,0 +1,6 @@
+main1,[(1,0,S,-)],C,-
+main1,[(1,0,C,tests\bla.go:11)],P
+main1,[(1,0,C,tests\bla.go:11)],C,-
+fun07,[(1,0,W,-)],C,-
+fun07,[(1,0,?,tests\bla.go:8)],P,-
+fun07,[(1,0,?,tests\bla.go:8)],-
