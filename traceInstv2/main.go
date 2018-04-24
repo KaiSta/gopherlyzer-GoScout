@@ -10,7 +10,7 @@ import (
 func main() {
 	in := flag.String("in", "", "path to code file")
 	out := flag.String("out", "", "result path")
-	link := flag.Bool("link", false, "with communication links")
+	link := flag.Bool("link", true, "with communication links")
 	flag.Parse()
 	fmt.Println(*in, "|", *out)
 	if in == nil || *in == "" {

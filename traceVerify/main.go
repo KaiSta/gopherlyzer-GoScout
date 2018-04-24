@@ -11,7 +11,7 @@ func main() {
 	json := flag.Bool("json", false, "output as json")
 	plain := flag.Bool("plain", true, "output as plain text")
 	bench := flag.Bool("bench", false, "used for benchmarks only")
-	analysis := flag.String("mode", "", "select between eraser,racetrack,fasttrack")
+	analysis := flag.String("mode", "fasttrack", "select between eraser,racetrack,fasttrack")
 	flag.Parse()
 
 	if !*json && !*plain && !*bench {

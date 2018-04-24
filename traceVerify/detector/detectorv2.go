@@ -85,9 +85,8 @@ func RunFastTrack(tracePath string, json, plain, bench bool) {
 	replay(m, json, plain, bench)
 	m.PostProcessing()
 	report.ReportAlts()
-	fmt.Printf("\n-----------\n")
+	fmt.Printf("\n\n")
 	//report.Events()
-	fmt.Printf("\n-----------\n")
 	report.AlternativesFromReport()
 }
 

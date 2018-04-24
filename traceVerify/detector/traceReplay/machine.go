@@ -1003,6 +1003,7 @@ func (m *Machine) PostProcessing() {
 			fmt.Println("pending events", t.ID, len(t.Events), e.String())
 		}
 	}
+	fmt.Printf("\n\n")
 	for {
 		done := 0
 
