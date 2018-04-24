@@ -21,7 +21,7 @@ and provide empirical evidence of the usefulness of our method.
 
 We use a small example program to show the process and the results of our prototype. In the following description we assume that the code file is in a folder called tests.
 
-```
+```go
 func main() {
     c := make(chan int)
     go func() {
@@ -47,7 +47,7 @@ go run main.go -in tests/main.go -out results/main.go
 
 This results in the following instrumented program:
 
-```
+```go
 import "*pathTotracer*/tracer"  //needs to be added manually
 
 func main() {
