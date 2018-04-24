@@ -19,7 +19,7 @@ and provide empirical evidence of the usefulness of our method.
 
 ## How to use
 
-We use a small example program to show to process and the results of our prototype. In the following description we assume that the code file is in a folder called tests.
+We use a small example program to show the process and the results of our prototype. In the following description we assume that the code file is in a folder called tests.
 
 ```
 func main() {
