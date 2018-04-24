@@ -66,12 +66,12 @@ func main() {
 		tracer.RegisterThread("fun0")
 		tracer.Wait(tmp1, tracer.GetGID())
 		myTIDCache := tracer.GetGID()
-		tracer.PreSend(c, "tests\\smallEx.go:6", myTIDCache)
+		tracer.PreSend(c, "tests\\main.go:6", myTIDCache)
 		c <- struct {
 			threadId uint64
 			value    int
 		}{myTIDCache, 1}
-		tracer.PostSend(c, "tests\\smallEx.go:6", myTIDCache)
+		tracer.PostSend(c, "tests\\main.go:6", myTIDCache)
 	}()
 	tmp2 := tracer.GetWaitSigID()
 	tracer.Signal(tmp2, myTIDCache)
@@ -80,16 +80,16 @@ func main() {
 		tracer.RegisterThread("fun1")
 		tracer.Wait(tmp2, tracer.GetGID())
 		myTIDCache := tracer.GetGID()
-		tracer.PreSend(c, "tests\\smallEx.go:9", myTIDCache)
+		tracer.PreSend(c, "tests\\main.go:9", myTIDCache)
 		c <- struct {
 			threadId uint64
 			value    int
 		}{myTIDCache, 1}
-		tracer.PostSend(c, "tests\\smallEx.go:9", myTIDCache)
+		tracer.PostSend(c, "tests\\main.go:9", myTIDCache)
 	}()
-	tracer.PreRcv(c, "tests\\smallEx.go:12", myTIDCache)
+	tracer.PreRcv(c, "tests\\main.go:12", myTIDCache)
 	tmp3 := <-c
-	tracer.PostRcv(c, "tests\\smallEx.go:12", tmp3.threadId, myTIDCache)
+	tracer.PostRcv(c, "tests\\main.go:12", tmp3.threadId, myTIDCache)
 
     tracer.Stop() //needs to be added manually
 }
